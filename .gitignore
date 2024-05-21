@@ -1,0 +1,8 @@
+*.pyc
+ __pycache__/
+.DS_Store
+.env
+.venv
+__pycache__
+cellSP.egg-info/
+cellSP/__pycache__/
