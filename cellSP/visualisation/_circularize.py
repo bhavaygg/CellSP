@@ -56,6 +56,7 @@ def _plot_density_concentric_circles(densities, num_circles, ax):
     norm = Normalize(vmin=np.min(densities), vmax=np.max(densities))
     colors = matplotlib.colormaps.get_cmap('Blues')(norm(densities))
     circles = []
+    # print(densities)
     for n, i in enumerate(densities):
         circles.append(plt.Circle((0,0), circle_radii[n+1], facecolor=colors[n], edgecolor='black', linewidth=0.2))
     for i in circles[::-1]:
@@ -369,7 +370,7 @@ def visualize_individual_module(adata_st, module_number, filename = None, num_se
             plt.savefig(filename, dpi=1000)
         plt.show()
 
-def visualize_pattern(adata_st, module_number, pattern, mode = "instant_fsm", filename = None, num_sectors = 10, num_ccircles = 5, distance_threshold = 2, is_sliced = True, positions = True):
+def visualize_pattern(adata_st, module_number, pattern, mode = "instant_fsm", filename = None, num_sectors = 10, num_ccircles = 5, distance_threshold = 2, is_sliced = True, positions = False):
     '''
     Model a specific subcellular patterns for a specific module found by FSM & LAS using extrapolated scRNA-seq data.
     Arguments
@@ -395,13 +396,15 @@ def visualize_pattern(adata_st, module_number, pattern, mode = "instant_fsm", fi
     print("Visualizing subcellular patterns...")
     results = adata_st.uns[mode]
     if pattern in ["Cluster", "Concentric"]:
+            if pattern == "Cluster":
+                pattern = "Radial"
             median_positions = adata_st.uns['transcripts'].groupby('uID')[['absX', 'absY']].median()
             median_positions.reset_index(inplace=True)
             module = results.iloc[module_number]
             density_module = []
             density_background = []
             for uID in module.uIDs.split(","):
-                density_cell_module, density_cell_background = _calculate_density(adata_st.uns['transcripts'][adata_st.uns['transcripts'].uID == int(uID)], module.genes.split(","), module.method, num_sectors=num_sectors, num_ccircles=num_ccircles)
+                density_cell_module, density_cell_background = _calculate_density(adata_st.uns['transcripts'][adata_st.uns['transcripts'].uID == int(uID)], module.genes.split(","), pattern, num_sectors=num_sectors, num_ccircles=num_ccircles)
                 density_module.append(density_cell_module)
                 density_background.append(density_cell_background)
             density_background = np.mean(density_background, axis = 0)

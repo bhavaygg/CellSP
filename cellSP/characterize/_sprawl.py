@@ -145,7 +145,7 @@ def run_sprawl(adata_st, methods = ['Periferal', 'Radial', 'Punctate', 'Central'
 
 
 
-def bicluster_sprawl(adata_st, methods = ['Periferal', 'Radial', 'Punctate', 'Central'], num_biclusters = 100, randomized_searches = 50000, scale_data = True, cell_threshold = 5, threads = 1):# 'Punctate', 'Central', 50000
+def bicluster_sprawl(adata_st, methods = ['Periferal', 'Radial', 'Punctate', 'Central'], num_biclusters = 100, randomized_searches = 50000, scale_data = True, cell_threshold = 5, threads = 1, expand = True):# 'Punctate', 'Central', 50000
     '''
     Perform LAS biclustering on SPRAWL spatial pattern scores to find spatial gene expression patterns.
     Arguments
@@ -192,11 +192,12 @@ def bicluster_sprawl(adata_st, methods = ['Periferal', 'Radial', 'Punctate', 'Ce
     df_results['sprawl average'] = df_results['sprawl average'].astype('str')
     df_results['sprawl score'] = df_results['sprawl score'].astype('str')
     score_issues = []
-    while True:
-        original_length = len(df_results)
-        df_results, score_issues = _expand_bicluster(df_results, df_sp.values, df_sp_scaled.values, list(uids), score_issues, col_range, col_log_combs, row_log_combs, df_sprawl = adata_st.uns['sprawl_scores'])
-        if len(df_results) == original_length:
-            break
+    if expand:
+        while True:
+            original_length = len(df_results)
+            df_results, score_issues = _expand_bicluster(df_results, df_sp.values, df_sp_scaled.values, list(uids), score_issues, col_range, col_log_combs, row_log_combs, df_sprawl = adata_st.uns['sprawl_scores'])
+            if len(df_results) == original_length:
+                break
     df_results = df_results[df_results.uIDs.apply(lambda x: len(x.split(',')) > cell_threshold)]
     adata_st.uns[f'sprawl_biclustering'] = df_results.reset_index(drop=True)
     print("SPRAWL bi-clustering completed time:", timedelta(seconds=timeit.default_timer() - start))

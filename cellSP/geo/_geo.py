@@ -4,7 +4,8 @@ import pandas as pd
 import timeit
 import matplotlib.pyplot as plt
 import requests
-from requests.adapters import HTTPAdapter, Retry
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from scipy.stats import pearsonr
 from scipy import stats
 
@@ -28,7 +29,7 @@ def _get_panther(geneset, background, dataset, organism, setting = None):
     '''
     df = pd.DataFrame()
     r_session = requests.Session()
-    retries = Retry(total=10, backoff_factor=1)
+    retries = Retry(total=2, backoff_factor=1)
     r_session.mount('http://', HTTPAdapter(max_retries=retries))
     for dataset in datasets:
         params = {
@@ -43,9 +44,14 @@ def _get_panther(geneset, background, dataset, organism, setting = None):
         x = r_session.post(f"https://pantherdb.org/services/oai/pantherdb/enrich/overrep", data=params)
         rows = []
         for i in x.json()['results']['result']:
-            rows.append([i['number_in_list'], i['fold_enrichment'], i['fdr'], i['expected'], 
-                        i['number_in_reference'], i['pValue'], i['term']['label']])
-        df_ds = pd.DataFrame(rows, columns = ['number_in_list', 'fold_enrichment', 'fdr', 'expected', 'number_in_reference', 'pValue', 'term'])
+            if i['number_in_list'] > 0:
+                try:
+                    rows.append([i['number_in_list'], i['fold_enrichment'], i['fdr'], i['expected'], 
+                            i['number_in_reference'], i['pValue'], i['term']['label'], i['term']['id']])
+                except:
+                    rows.append([i['number_in_list'], i['fold_enrichment'], i['fdr'], i['expected'], 
+                            i['number_in_reference'], i['pValue'], i['term']['label'], np.nan])
+        df_ds = pd.DataFrame(rows, columns = ['number_in_list', 'fold_enrichment', 'fdr', 'expected', 'number_in_reference', 'pValue', 'term', 'id'])
         df_significant = df_ds[df_ds.pValue < 0.05].sort_values(by=['pValue'])
         df_significant['dataset'] = dataset
         df = pd.concat([df, df_significant])
@@ -54,6 +60,7 @@ def _get_panther(geneset, background, dataset, organism, setting = None):
         df = df[df.number_in_reference > 10].copy()
         fdr_new = stats.false_discovery_control(df.pValue.values)
         df['fdr'] = fdr_new
+    df['id'] = df['id'].astype('str')
     return df
 
 
@@ -81,7 +88,10 @@ def geo_analysis(adata_st, mode=['instant_fsm', 'instant_biclustering', 'sprawl_
     for method in mode:
         if method not in ['instant_fsm', 'instant_biclustering', 'sprawl_biclustering']:
             raise ValueError("Invalid mode. Please choose from 'instant_fsm', 'instant_biclustering', 'sprawl_biclustering'.")
+        if method not in adata_st.uns.keys():
+            continue
         results = adata_st.uns[method]
+        print(results)
         adata_st.uns[f"{method}_geo_{setting}"] = {}
         for n, i in results.iterrows():
             flag = True

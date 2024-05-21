@@ -7,6 +7,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import balanced_accuracy_score
 import timeit
 import shap
+from anndata import AnnData
 
 def _subsample_celltype(positive_cells, negative_cells):
     '''
@@ -68,6 +69,8 @@ def _run_cv(df_cells, X_extrapolated, X_tangram, all_genes, module_genes, ex_cor
     X_tg = X_tangram[X_tangram.uID.isin(cell_ids)].copy().set_index('uID').loc[cell_ids][geneset1].values
     X_tg_corr = X_tangram[X_tangram.uID.isin(cell_ids)].copy().set_index('uID').loc[cell_ids][geneset2_tg].values
     X_baseline = X_tangram[X_tangram.uID.isin(cell_ids)].copy().set_index('uID').loc[cell_ids][module_genes].values
+    # print(X_tangram[X_tangram.uID.isin(cell_ids)].copy().set_index('uID').loc[cell_ids][geneset1])
+    # print(X_tangram[X_tangram.uID.isin(cell_ids)].copy().set_index('uID').loc[cell_ids][module_genes])
     rskf = StratifiedKFold(n_splits = n_splits, shuffle=True, **kwargs)
     scores = []
     shap_mean_scores = []
@@ -141,6 +144,8 @@ def model_modules(adata_st, mode = ['instant_fsm', 'instant_biclustering', 'spra
     #     raise ValueError("Extrapolated scRNA-seq data not found in adata_st.uns. Please run atleast either extrapolation or tangram first.")
     for method in mode:
         print(method)
+        if method not in adata_st.uns.keys():
+            continue
         if method not in ['instant_fsm', 'instant_biclustering', 'sprawl_biclustering']:
             raise ValueError("Invalid mode. Please choose from 'instant_fsm', 'instant_biclustering', 'sprawl_biclustering'.")
         X_extrapolated = None
@@ -148,10 +153,15 @@ def model_modules(adata_st, mode = ['instant_fsm', 'instant_biclustering', 'spra
         print(adata_st.uns[method])
         if 'X_extrapolated' in adata_st.uns.keys():
             X_extrapolated = adata_st.uns["X_extrapolated"].copy()
+        # if isinstance(adata_st_all, AnnData):
+        #     X_tg = adata_st_all.to_df().copy().reset_index()
+        #     print(X_tg)
+        # else:
         X_tg = adata_st.to_df().copy().reset_index()
         all_cells = list(X_tg.uID.values)
         all_genes = X_tg.set_index('uID').columns.values
         for nrow, i in adata_st.uns[method].iterrows():
+            print(i)
             X_tangram_module = X_tg.copy()
             module_genes = i.genes.split(",")
             module_genes = [x[0].lower() + x[1:] for x in module_genes]

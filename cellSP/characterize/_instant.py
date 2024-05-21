@@ -86,7 +86,7 @@ def analyse_fsm(adata_st, top_k, n_vertices, distance_threshold, alpha = 0.01):
     adata_st.uns[f"instant_fsm"] = df_topk
     return adata_st
 
-def bicluster_instant(adata_st, distance_threshold, num_biclusters = 100, randomized_searches = 50000, scale_data = True, alpha = 0.001, cell_threshold = 5, threads = 1): #, randomized_searches = 50000
+def bicluster_instant(adata_st, distance_threshold, num_biclusters = 100, randomized_searches = 50000, scale_data = True, alpha = 0.001, cell_threshold = 5, threads = 1, expand = True): #, randomized_searches = 50000
     '''
     Perform LAS biclustering on InSTAnT PP-test p-values to find spatial gene expression patterns.
     Arguments
@@ -156,11 +156,12 @@ def bicluster_instant(adata_st, distance_threshold, num_biclusters = 100, random
     df_results['instant average'] = df_results['instant average'].astype('str')
     df_results['instant score'] = df_results['instant score'].astype('str')
     score_issues = []
-    while True:
-        original_length = len(df_results)
-        df_results, score_issues = _expand_bicluster(df_results, pval_matrix, pval_matrix_scaled, list(uids), score_issues, col_range, col_log_combs, row_log_combs, mode = "instant", gene_pairs = gene_pairs)
-        if len(df_results) == original_length:
-            break
+    if expand:
+        while True:
+            original_length = len(df_results)
+            df_results, score_issues = _expand_bicluster(df_results, pval_matrix, pval_matrix_scaled, list(uids), score_issues, col_range, col_log_combs, row_log_combs, mode = "instant", gene_pairs = gene_pairs)
+            if len(df_results) == original_length:
+                break
     df_results = df_results[df_results.uIDs.apply(lambda x: len(x.split(',')) > cell_threshold)]
     adata_st.uns[f'instant_biclustering'] = df_results.reset_index(drop=True)
     print("InSTAnT CPB Bi-clustering time:", timedelta(timeit.default_timer() - start))

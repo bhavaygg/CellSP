@@ -1,2 +1,3 @@
 from ._validation import extrapolate_validation_results
-from ._circularize import visualize_modules, visualize_individual_module
+from ._circularize import visualize_modules, visualize_individual_module, visualize_pattern
+from ._enrichment import visualize_geo_enrichment
