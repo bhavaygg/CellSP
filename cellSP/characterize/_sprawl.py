@@ -38,7 +38,7 @@ def _generate_convex_hull(Z):
 
 def _parallel_sprawl(args):
     cell_dict, method, count = args[0], args[1], args[2]
-    if method == 'Periferal':
+    if method == 'Peripheral':
         temp_df = _peripheral(DotAccessibleDict(cell_dict))
     elif method == 'Radial':
         temp_df = _radial(DotAccessibleDict(cell_dict), num_iterations = 1000, num_pairs = 4)
@@ -47,11 +47,11 @@ def _parallel_sprawl(args):
     elif method == 'Central':
         temp_df = _central(DotAccessibleDict(cell_dict))
     else:
-        raise ValueError("Invalid method. Options are 'Periferal', 'Radial', 'Punctate', 'Central'.")
+        raise ValueError("Invalid method. Options are 'Peripheral', 'Radial', 'Punctate', 'Central'.")
     return method, count, temp_df
 
     
-def run_sprawl(adata_st, methods = ['Periferal', 'Radial', 'Punctate', 'Central'], threads = 1):
+def run_sprawl(adata_st, methods = ['Peripheral', 'Radial', 'Punctate', 'Central'], threads = 1):
     '''
     Run sprawl on the spatial data to find spatial gene expression patterns.
     Arguments
@@ -59,7 +59,7 @@ def run_sprawl(adata_st, methods = ['Periferal', 'Radial', 'Punctate', 'Central'
     adata_st : AnnData
         Anndata object containing spatial transcriptomics data.
     methods : list
-        List of methods to run sprawl on. Options are 'Periferal', 'Radial', 'Punctate', 'Central'.
+        List of methods to run sprawl on. Options are 'Peripheral', 'Radial', 'Punctate', 'Central'.
     threads : int
         Number of threads to use.
     '''
@@ -81,15 +81,15 @@ def run_sprawl(adata_st, methods = ['Periferal', 'Radial', 'Punctate', 'Central'
         if 'cell_boundary' in adata_st.uns: #check whether cell_boundary has been provided in the data
             cell_boundaries = adata_st.uns['cell_boundary']
             cell_boundaries.index = cell_boundaries.index.astype(str)
-            # print(cell_boundaries)
             # cell_boundaries.set_index('uID', inplace=True)
             if 'absZ' in df_transcripts.columns: #check whether data is 3D
                 for n2, Z in cell.groupby("absZ"):
                     if 'absZ' in cell_boundaries.columns: #check whether cell_boundary is 3D
-                        slice_boundary = cell_boundaries.loc[Z.uID]
+                        slice_boundary = cell_boundaries.loc[Z.uID.unique()[0]]
                         slice_boundary = slice_boundary[slice_boundary.absZ == n2]
                     else:
-                        slice_boundary = cell_boundaries.loc[Z.uID]
+                        slice_boundary = cell_boundaries.loc[str(Z.uID.unique()[0])]
+                        # slice_boundary = cell_boundaries.loc[Z.uID.unique()[0]]
                     vertices, spot_coords, spot_genes = _get_slice_data(Z, slice_boundary)
                     cell_dict['boundaries'][n2], cell_dict['spot_coords'][n2], cell_dict['spot_genes'][n2] = vertices, spot_coords, spot_genes
                     cell_dict['zslices'].append(n2)
@@ -145,7 +145,7 @@ def run_sprawl(adata_st, methods = ['Periferal', 'Radial', 'Punctate', 'Central'
 
 
 
-def bicluster_sprawl(adata_st, methods = ['Periferal', 'Radial', 'Punctate', 'Central'], num_biclusters = 100, randomized_searches = 50000, scale_data = True, cell_threshold = 5, threads = 1, expand = True):# 'Punctate', 'Central', 50000
+def bicluster_sprawl(adata_st, methods = ['Peripheral', 'Radial', 'Punctate', 'Central'], num_biclusters = 100, randomized_searches = 50000, scale_data = True, cell_threshold = 5, threads = 1, expand = True):# 'Punctate', 'Central', 50000
     '''
     Perform LAS biclustering on SPRAWL spatial pattern scores to find spatial gene expression patterns.
     Arguments
@@ -153,7 +153,7 @@ def bicluster_sprawl(adata_st, methods = ['Periferal', 'Radial', 'Punctate', 'Ce
     adata_st : AnnData
         Anndata object containing spatial transcriptomics data.
     methods : list
-        List of methods to run sprawl on. Options are 'Periferal', 'Radial', 'Punctate', 'Central'.
+        List of methods to run sprawl on. Options are 'Peripheral', 'Radial', 'Punctate', 'Central'.
     num_biclusters : int
         Number of biclusters to find.
     randomized_searches : int

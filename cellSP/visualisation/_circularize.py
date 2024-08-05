@@ -21,18 +21,23 @@ def _calculate_density_sector(points, num_sectors=20):
             if angles[i] <= angle < angles[i+1]:
                 sector_points.append(point)
         densities[i] = len(sector_points)#(0.5 * radius * radius * (angles[i+1] - angles[i]))
-
-    densities = np.array(densities) / len(points)
+    densities = np.array(densities) / len(points) if len(points) > 0 else np.zeros(num_sectors)
     return densities
 
 def _plot_sector_density(densities, num_sectors, ax, rest):
     angles = np.linspace(0, 2*np.pi, num_sectors+1) + (2*np.pi) / (num_sectors * 2)
     colors = densities
     if rest:
-        bars = ax.bar(angles[:-1], colors, width=(2*np.pi) / num_sectors, bottom=0.0, color='orange', alpha = 0.7, edgecolor='black', linewidth=0.2)
+        bars = ax.bar(angles[:-1], colors, width=(2*np.pi) / num_sectors, bottom=0.0, color='orange', alpha = 0.7, edgecolor='orange', linewidth=3)
     else:
-        bars = ax.bar(angles[:-1], colors, width=(2*np.pi) / num_sectors, bottom=0.0, color='blueviolet', edgecolor='black', linewidth=0.3)
-    ax.grid(alpha=0.4)
+        bars = ax.bar(angles[:-1], colors, width=(2*np.pi) / num_sectors, bottom=0.0, color='blueviolet', edgecolor='blueviolet', linewidth=3, alpha=0.7)
+    if not rest:
+        ax.grid(alpha=0.2, color='black')
+        ax.tick_params(labelbottom=False)
+        ax.set_yticks(np.linspace(0, np.max(densities), 5))
+        ax.set_yticklabels([])
+        for r in np.linspace(0, np.max(densities), 5):
+            ax.text(3*np.pi/2, r, f'{r:.1f}', horizontalalignment='left', verticalalignment='center')
 
 def _calculate_density_concentric_circles(points, num_circles, center = 0):
     # Calculate distances of points from the center
@@ -50,23 +55,26 @@ def _calculate_density_concentric_circles(points, num_circles, center = 0):
     densities = np.array(densities) / len(densities)
     return densities
 
-def _plot_density_concentric_circles(densities, num_circles, ax):
+def _plot_density_concentric_circles(densities, num_circles, fig, ax):
     min_radius = 0.0
     circle_radii = np.linspace(min_radius, 1, num_circles + 1)
     norm = Normalize(vmin=np.min(densities), vmax=np.max(densities))
     colors = matplotlib.colormaps.get_cmap('Blues')(norm(densities))
     circles = []
-    # print(densities)
     for n, i in enumerate(densities):
-        circles.append(plt.Circle((0,0), circle_radii[n+1], facecolor=colors[n], edgecolor='black', linewidth=0.2))
+        im = circles.append(plt.Circle((1,1), circle_radii[n+1], facecolor=colors[n], edgecolor="black", linewidth=0.7, alpha=0.7))
     for i in circles[::-1]:
         ax.add_patch(i)
-    # circle = plt.Circle((0,0), 1,edgecolor='r', facecolor='none')
-    # ax.add_patch(circle)
-
-    ax.set_xlim(-1.2, 1.2)
-    ax.set_ylim(-1.2, 1.2)
-    cb = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap='Blues'), ax=ax, label='Density')
+    cb = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap='Blues'), ax=ax, label='Density', shrink = 0.3, aspect = 20*0.3)
+    fig.set_tight_layout(True)
+    ax.tick_params(axis='both', which='both', bottom=False, top=False, left=False, right=False, labelbottom=False, labelleft=False)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.set_facecolor('none')
+    ax.axis('off')
+    ax.autoscale_view()
 
 def _rearrange_max_at_zero(densities):
     max_index = np.argmax(densities)
@@ -84,7 +92,6 @@ def _shift_circle(points, center_x, center_y, radius):
 
 def _calculate_density(cell, module_genes, pattern, num_sectors = None, num_ccircles = None):
     points = cell[['absX', 'absY']].values
-    hull = ConvexHull(points)
     center_x, center_y, radius = smallestenclosingcircle.make_circle(points)
     shift_x, shift_y, radius = _shift_circle(points, center_x, center_y, radius)
     points_genes_x = (cell[cell.gene.isin(module_genes)][['absX']].values + shift_x)/radius
@@ -101,8 +108,8 @@ def _calculate_density(cell, module_genes, pattern, num_sectors = None, num_ccir
 def _plot_spatial_cells(median_positions, module_cells, ax):
     positive_cells = median_positions[median_positions.uID.isin([int(x) for x in module_cells])]
     negative_cells = median_positions[~median_positions.uID.isin([int(x) for x in module_cells])]
-    ax.scatter(positive_cells.absX, positive_cells.absY, label="bicluster", color="red", alpha=0.6, s=1.5)
-    ax.scatter(negative_cells.absX, negative_cells.absY, label="Rest", color="grey", alpha=0.2, s=0.75)
+    ax.scatter(positive_cells.absX, positive_cells.absY, label="Module", color="red", alpha=0.6, s=1.5)
+    ax.scatter(negative_cells.absX, negative_cells.absY, label="Background", color="grey", alpha=0.2, s=0.75)
 
 def _plot_circular_cell(density_module, density_background, median_positions, module_cells, num_sectors, num_ccircles, pattern, genes, pdiff = None, positions = True, filename = None):
     if pattern == "Radial" or pattern == "Punctate":
@@ -127,20 +134,22 @@ def _plot_circular_cell(density_module, density_background, median_positions, mo
             ax2.axes.set_aspect('equal')
             _plot_spatial_cells(median_positions, module_cells, ax2)
         else:
-            fig = plt.figure(figsize=(10,5))
-            ax = plt.subplot(131)
-            ax1 = plt.subplot(132)
+            fig = plt.figure(figsize=(5,7))
+            ax = plt.subplot(211)
+            ax1 = plt.subplot(212)
+        _plot_density_concentric_circles(density_module, num_ccircles, fig, ax)
+        _plot_density_concentric_circles(density_background, num_ccircles, fig, ax1)
+        ax.set_title("Module", y=-0.1)
+        ax1.set_title("Background", y=-0.1)
         ax.axes.set_aspect('equal')
         ax1.axes.set_aspect('equal')
-        _plot_density_concentric_circles(density_module, num_ccircles, ax)
-        _plot_density_concentric_circles(density_background, num_ccircles, ax1)
-    if pdiff != None:
-        fig.suptitle(f'Genes: {genes}, #Cells: {len(module_cells)}, Pattern: {pattern}, Performance Difference: {pdiff * 100:.2f}%', wrap = True)
-    else:
-        fig.suptitle(f"Genes: {genes}, #Cells: {len(module_cells)}, Pattern: {pattern}", wrap = True)
+        if len(genes.split(",")) <= 10:
+            fig.suptitle(f"Genes: {genes}, #Cells: {len(module_cells)}, Pattern: {pattern}", wrap = True)
+        else:
+            fig.suptitle(f"#Genes: {len(genes.split(","))}, #Cells: {len(module_cells)}, Pattern: {pattern}", wrap = True)
     plt.tight_layout()
     if filename != None:
-        plt.savefig(filename, dpi=1000)
+        plt.savefig(filename, dpi=300)
     plt.show()
 
 def _calculate_gene_cell_neighborhood_slice(cell, geneList, distance_threshold):
@@ -183,18 +192,17 @@ def _plot_neighborhood_heatmap(knn_matrix_module, knn_matrix_nonmodule, all_gene
     module_knn_agg_neg = knn_matrix_nonmodule[indices][:, indices] + 1e-32
     logmat = np.log10(module_knn_agg_pos / module_knn_agg_neg)
     logmat = np.clip(logmat, -1, 1)
-    sns.heatmap(logmat, cmap="seismic", ax = ax, center = 0, square=True, cbar_kws={"label": "Log Fold Change in Proximity", "shrink": 0.5, "extend": "both"})
-    ax.set_xticks([x + 0.5 for x in list(range(len(indices)))])
-    ax.set_yticks([x + 0.5 for x in list(range(len(indices)))])
-    ax.set_xticklabels(labels = [all_genes[x] for x in indices], rotation=90, fontsize = "small")
-    print(logmat.shape)
-    print(len(indices))
-    ax.set_yticklabels([all_genes[x] for x in indices], rotation = 0, fontsize = "small")
+    sns.heatmap(logmat, cmap="RdBu_r", ax = ax, center = 0, square=True, cbar_kws={"label": "Log Fold Change in Proximity", "shrink": 0.5, "extend": "both"})
+    if len(module_genes) <= 10:
+        ax.set_xticks([x + 0.5 for x in list(range(len(indices)))])
+        ax.set_yticks([x + 0.5 for x in list(range(len(indices)))])
+        ax.set_xticklabels(labels = [all_genes[x].capitalize() for x in indices], rotation=90, fontsize = 13)
+        ax.set_yticklabels([all_genes[x].capitalize() for x in indices], rotation = 0, fontsize = 13)
     ax.vlines(len(module_genes), 0, len(indices), color='black', linewidth=2)
     ax.hlines(len(module_genes), 0, len(indices), color='black', linewidth=2)
     ax.set_title("Normalized Sum Ratio")
 
-def visualize_modules(adata_st, mode = ['instant_fsm', 'instant_biclustering', 'sprawl_biclustering'], num_sectors = 10, num_ccircles = 5, distance_threshold = 2, positions = True, performance_flag = True, is_sliced = True):
+def visualize_modules(adata_st, mode = ['instant_fsm', 'instant_biclustering', 'sprawl_biclustering'], num_sectors = 10, num_ccircles = 5, distance_threshold = 2, positions = True, performance_flag = True, is_sliced = True, header = False):
     '''
     Model the subcellular patterns found by FSM & LAS using extrapolated scRNA-seq data.
     Arguments
@@ -232,7 +240,7 @@ def visualize_modules(adata_st, mode = ['instant_fsm', 'instant_biclustering', '
                     density_module = []
                     density_background = []
                     for uID in i.uIDs.split(","):
-                        density_cell_module, density_cell_background = _calculate_density(adata_st.uns['transcripts'][adata_st.uns['transcripts'].uID == int(uID)], i.genes.split(","), i.method, num_sectors=num_sectors, num_ccircles=num_ccircles)
+                        density_cell_module, density_cell_background = _calculate_density(adata_st.uns['transcripts'][adata_st.uns['transcripts'].uID == uID], i.genes.split(","), i.method, num_sectors=num_sectors, num_ccircles=num_ccircles)
                         density_module.append(density_cell_module)
                         density_background.append(density_cell_background)
                     density_background = np.mean(density_background, axis = 0)
@@ -251,9 +259,9 @@ def visualize_modules(adata_st, mode = ['instant_fsm', 'instant_biclustering', '
             proximity_matrix = []
             for uID in all_uids:
                 if is_sliced:
-                    proximity_matrix.append(_calculate_gene_cell_neighborhood_slice(df_transcripts[df_transcripts.uID == int(uID)], adata_st.uns['geneList'], distance_threshold))
+                    proximity_matrix.append(_calculate_gene_cell_neighborhood_slice(df_transcripts[df_transcripts.uID == uID], adata_st.uns['geneList'], distance_threshold))
                 else:
-                    proximity_matrix.append(_calculate_gene_cell_neighborhood(df_transcripts[df_transcripts.uID == int(uID)], adata_st.uns['geneList'], distance_threshold))
+                    proximity_matrix.append(_calculate_gene_cell_neighborhood(df_transcripts[df_transcripts.uID == uID], adata_st.uns['geneList'], distance_threshold))
             proximity_matrix = np.array(proximity_matrix)
             for n, i in instant_results.iterrows():
                 flag = True
@@ -281,15 +289,12 @@ def visualize_modules(adata_st, mode = ['instant_fsm', 'instant_biclustering', '
                     else:
                         fig, ax = plt.subplots(nrows = 1, ncols = 1, figsize=(6,5))
                     _plot_neighborhood_heatmap(knn_matrix_module, knn_matrix_nonmodule, geneList, module_genes, [x for x in geneList if x not in module_genes], ax[0] if positions else ax)
-                    if 'tangram' in i.keys() and 'baseline' in i.keys():
-                        pdiff = i['tangram'] - i['baseline']
-                        fig.suptitle(f"Genes: {i.genes}, #Cells: {len(module_cells)}, Pattern: {pattern}, Performance Difference: {pdiff * 100:.2f}%", wrap = True)
-                    else:
+                    if header:
                         fig.suptitle(f"Genes: {i.genes}, #Cells: {len(module_cells)}, Pattern: {pattern}", wrap = True)
                     plt.tight_layout()
                     plt.show()
 
-def visualize_individual_module(adata_st, module_number, filename = None, num_sectors = 10, num_ccircles = 5, mode = 'instant_fsm', distance_threshold = 2, is_sliced = True, positions = True):
+def visualize_individual_module(adata_st, module_number, filename = None, num_sectors = 10, num_ccircles = 5, mode = 'instant_fsm', distance_threshold = 2, is_sliced = True, positions = True, header = False):
     '''
     Model the subcellular patterns for a specific module found by FSM & LAS using extrapolated scRNA-seq data.
     Arguments
@@ -318,7 +323,7 @@ def visualize_individual_module(adata_st, module_number, filename = None, num_se
         density_module = []
         density_background = []
         for uID in module.uIDs.split(","):
-            density_cell_module, density_cell_background = _calculate_density(adata_st.uns['transcripts'][adata_st.uns['transcripts'].uID == int(uID)], module.genes.split(","), module.method, num_sectors=num_sectors, num_ccircles=num_ccircles)
+            density_cell_module, density_cell_background = _calculate_density(adata_st.uns['transcripts'][adata_st.uns['transcripts'].uID == uID], module.genes.split(","), module.method, num_sectors=num_sectors, num_ccircles=num_ccircles)
             density_module.append(density_cell_module)
             density_background.append(density_cell_background)
         density_background = np.mean(density_background, axis = 0)
@@ -337,9 +342,9 @@ def visualize_individual_module(adata_st, module_number, filename = None, num_se
         proximity_matrix = []
         for uID in all_uids:
             if is_sliced:
-                proximity_matrix.append(_calculate_gene_cell_neighborhood_slice(df_transcripts[df_transcripts.uID == int(uID)], adata_st.uns['geneList'], distance_threshold))
+                proximity_matrix.append(_calculate_gene_cell_neighborhood_slice(df_transcripts[df_transcripts.uID == uID], adata_st.uns['geneList'], distance_threshold))
             else:
-                proximity_matrix.append(_calculate_gene_cell_neighborhood(df_transcripts[df_transcripts.uID == int(uID)], adata_st.uns['geneList'], distance_threshold))
+                proximity_matrix.append(_calculate_gene_cell_neighborhood(df_transcripts[df_transcripts.uID == uID], adata_st.uns['geneList'], distance_threshold))
         proximity_matrix = np.array(proximity_matrix)
         module = instant_results.iloc[module_number]
         knn_matrix_module = []
@@ -360,17 +365,14 @@ def visualize_individual_module(adata_st, module_number, filename = None, num_se
         else:
             fig, ax = plt.subplots(nrows = 1, ncols = 1, figsize=(6,5))
         _plot_neighborhood_heatmap(knn_matrix_module, knn_matrix_nonmodule, geneList, module_genes, [x for x in geneList if x not in module_genes], ax[1] if positions else ax)
-        if 'tangram' in module.keys() and 'baseline' in module.keys():
-            pdiff = module['tangram'] - module['baseline']
-            fig.suptitle(f"Genes: {module.genes}, #Cells: {len(module_cells)}, Pattern: {pattern}, Performance Difference: {pdiff * 100:.2f}%", wrap = True)
-        else:
+        if header:
             fig.suptitle(f"Genes: {module.genes}, #Cells: {len(module_cells)}, Pattern: {pattern}", wrap = True)
         plt.tight_layout()
         if filename != None:
             plt.savefig(filename, dpi=1000)
         plt.show()
 
-def visualize_pattern(adata_st, module_number, pattern, mode = "instant_fsm", filename = None, num_sectors = 10, num_ccircles = 5, distance_threshold = 2, is_sliced = True, positions = False):
+def visualize_pattern(adata_st, module_number, pattern, mode = "instant_fsm", filename = None, num_sectors = 10, num_ccircles = 5, distance_threshold = 2, is_sliced = True, positions = False, header = False):
     '''
     Model a specific subcellular patterns for a specific module found by FSM & LAS using extrapolated scRNA-seq data.
     Arguments
@@ -404,7 +406,7 @@ def visualize_pattern(adata_st, module_number, pattern, mode = "instant_fsm", fi
             density_module = []
             density_background = []
             for uID in module.uIDs.split(","):
-                density_cell_module, density_cell_background = _calculate_density(adata_st.uns['transcripts'][adata_st.uns['transcripts'].uID == int(uID)], module.genes.split(","), pattern, num_sectors=num_sectors, num_ccircles=num_ccircles)
+                density_cell_module, density_cell_background = _calculate_density(adata_st.uns['transcripts'][adata_st.uns['transcripts'].uID == uID], module.genes.split(","), pattern, num_sectors=num_sectors, num_ccircles=num_ccircles)
                 density_module.append(density_cell_module)
                 density_background.append(density_cell_background)
             density_background = np.mean(density_background, axis = 0)
@@ -421,9 +423,9 @@ def visualize_pattern(adata_st, module_number, pattern, mode = "instant_fsm", fi
         proximity_matrix = []
         for uID in all_uids:
             if is_sliced:
-                proximity_matrix.append(_calculate_gene_cell_neighborhood_slice(df_transcripts[df_transcripts.uID == int(uID)], adata_st.uns['geneList'], distance_threshold))
+                proximity_matrix.append(_calculate_gene_cell_neighborhood_slice(df_transcripts[df_transcripts.uID == uID], adata_st.uns['geneList'], distance_threshold))
             else:
-                proximity_matrix.append(_calculate_gene_cell_neighborhood(df_transcripts[df_transcripts.uID == int(uID)], adata_st.uns['geneList'], distance_threshold))
+                proximity_matrix.append(_calculate_gene_cell_neighborhood(df_transcripts[df_transcripts.uID == uID], adata_st.uns['geneList'], distance_threshold))
         proximity_matrix = np.array(proximity_matrix)
         module = results.iloc[module_number]
         knn_matrix_module = []
@@ -444,10 +446,7 @@ def visualize_pattern(adata_st, module_number, pattern, mode = "instant_fsm", fi
         else:
             fig, ax = plt.subplots(nrows = 1, ncols = 1, figsize=(6,5))
         _plot_neighborhood_heatmap(knn_matrix_module, knn_matrix_nonmodule, geneList, module_genes, [x for x in geneList if x not in module_genes], ax[1] if positions else ax)
-        if 'tangram' in module.keys() and 'baseline' in module.keys():
-            pdiff = module['tangram'] - module['baseline']
-            fig.suptitle(f"Genes: {module.genes}, #Cells: {len(module_cells)}, Pattern: {pattern}, Performance Difference: {pdiff * 100:.2f}%", wrap = True)
-        else:
+        if header:
             fig.suptitle(f"Genes: {module.genes}, #Cells: {len(module_cells)}, Pattern: {pattern}", wrap = True)
         plt.tight_layout()
         if filename != None:

@@ -8,10 +8,12 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from scipy.stats import pearsonr
 from scipy import stats
+from ..visualisation import run_revigo_module, run_revigo_cell
+
 
 datasets = {"BP": "GO:0008150", "CC": "GO:0005575", "MF": "GO:0003674"}
 
-def _get_panther(geneset, background, dataset, organism, setting = None):
+def _get_panther(geneset, background, organism, setting = None):
     '''
         Perform GO enrichment analysis using PANTHERDB.
         Arguments
@@ -29,7 +31,7 @@ def _get_panther(geneset, background, dataset, organism, setting = None):
     '''
     df = pd.DataFrame()
     r_session = requests.Session()
-    retries = Retry(total=2, backoff_factor=1)
+    retries = Retry(total=5, backoff_factor=1)
     r_session.mount('http://', HTTPAdapter(max_retries=retries))
     for dataset in datasets:
         params = {
@@ -52,7 +54,7 @@ def _get_panther(geneset, background, dataset, organism, setting = None):
                     rows.append([i['number_in_list'], i['fold_enrichment'], i['fdr'], i['expected'], 
                             i['number_in_reference'], i['pValue'], i['term']['label'], np.nan])
         df_ds = pd.DataFrame(rows, columns = ['number_in_list', 'fold_enrichment', 'fdr', 'expected', 'number_in_reference', 'pValue', 'term', 'id'])
-        df_significant = df_ds[df_ds.pValue < 0.05].sort_values(by=['pValue'])
+        df_significant = df_ds[(df_ds.pValue < 0.05) & (df_ds.fold_enrichment > 1)].sort_values(by=['pValue'])
         df_significant['dataset'] = dataset
         df = pd.concat([df, df_significant])
     df.sort_values(by=['pValue'], inplace=True)
@@ -64,7 +66,7 @@ def _get_panther(geneset, background, dataset, organism, setting = None):
     return df
 
 
-def geo_analysis(adata_st, mode=['instant_fsm', 'instant_biclustering', 'sprawl_biclustering'], performance_flag = False, organism = 10090, setting = "module", dataset = "GO:0008150"):
+def geo_analysis(adata_st, mode=['instant_fsm', 'instant_biclustering', 'sprawl_biclustering'], performance_flag = False, organism = 10090, do_revigo = True, setting = "module"):
     '''
     Perform the geo analysis.
     Arguments
@@ -91,41 +93,39 @@ def geo_analysis(adata_st, mode=['instant_fsm', 'instant_biclustering', 'sprawl_
         if method not in adata_st.uns.keys():
             continue
         results = adata_st.uns[method]
-        print(results)
         adata_st.uns[f"{method}_geo_{setting}"] = {}
         for n, i in results.iterrows():
-            flag = True
-            if performance_flag:
-                if i['tangram'] - i['baseline'] > 0:
-                    flag = True
+            if setting == "module":
+                geneset = i['genes']
+                background = ','.join(adata_st.uns['geneList'])
+                result = _get_panther(geneset, background, organism)
+                if result.shape[0] > 0:
+                    adata_st.uns[f"{method}_geo_module"][str(n)] = result
+                    if do_revigo:
+                        df_revigo = run_revigo_module(result)
+                        adata_st.uns[method].at[n, "GO Module"] = df_revigo.iloc[0]["Name"]
                 else:
-                    flag = False
-            if flag:
-                if setting == "module":
-                    geneset = i['genes']
-                    background = ','.join(adata_st.uns['geneList'])
-                    result = _get_panther(geneset, background, dataset, organism)
-                    if result.shape[0] > 0:
-                        adata_st.uns[f"{method}_geo_module"][str(n)] = result
-                    else:
-                        print(f"No significant GO terms found for module {n} for setting - {setting}")
-                elif setting == "cell":
-                    geneset = i["shap genes"]
-                    geneset_list = geneset.split(",")
-                    background = ','.join(adata_st.var_names)
-                    gene_expression = adata_st.X
-                    correlation_matrix = pd.DataFrame(np.corrcoef(gene_expression, rowvar=False), columns=adata_st.var_names, index=adata_st.var_names)[geneset_list]
-                    for gene in correlation_matrix.columns:
-                        geneset_list.extend(correlation_matrix[correlation_matrix[gene] > 0.98].index.values)
-                    geneset_list = list(set(geneset_list).difference(set(i['genes'].split(","))))
-                    geneset = ",".join(geneset_list)
-                    adata_st.uns[method].at[n, "#pc_genes"] = len(geneset_list)
-                    result = _get_panther(geneset, background, dataset, organism, setting)
-                    if result.shape[0] > 0:
-                        adata_st.uns[f"{method}_geo_cell"][str(n)] = result
-                    else:
-                        print(f"No significant GO terms found for module {n} for setting - {setting}")
+                    print(f"No significant GO terms found for module {n} for setting - {setting}")
+            elif setting == "cell":
+                geneset = i["shap genes"]
+                geneset_list = geneset.split(",")
+                background = ','.join(adata_st.var_names)
+                gene_expression = adata_st.X
+                correlation_matrix = pd.DataFrame(np.corrcoef(gene_expression, rowvar=False), columns=adata_st.var_names, index=adata_st.var_names)[geneset_list]
+                for gene in correlation_matrix.columns:
+                    geneset_list.extend(correlation_matrix[correlation_matrix[gene] > 0.98].index.values)
+                geneset_list = list(set(geneset_list).difference(set(i['genes'].split(","))))
+                geneset = ",".join(geneset_list)
+                adata_st.uns[method].at[n, "#pc_genes"] = len(geneset_list)
+                result = _get_panther(geneset, background, organism, setting)
+                if result.shape[0] > 0:
+                    adata_st.uns[f"{method}_geo_cell"][str(n)] = result
+                    if do_revigo:
+                        df_revigo = run_revigo_cell(result)
+                        adata_st.uns[method].at[n, "GO Cell"] = df_revigo.iloc[0]["Name"]
                 else:
-                    raise ValueError("Invalid setting. Please choose from 'module' or 'cell'.")
+                    print(f"No significant GO terms found for module {n} for setting - {setting}")
+            else:
+                raise ValueError("Invalid setting. Please choose from 'module' or 'cell'.")
     print("GO Enrichment Analysis Completed in :", timedelta(seconds = timeit.default_timer() - start))
     return adata_st
