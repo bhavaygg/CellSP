@@ -31,7 +31,7 @@ def _get_panther(geneset, background, organism, setting = None):
     '''
     df = pd.DataFrame()
     r_session = requests.Session()
-    retries = Retry(total=5, backoff_factor=1)
+    retries = Retry(total=5, backoff_factor=1, status_forcelist=[502, 503, 504])
     r_session.mount('http://', HTTPAdapter(max_retries=retries))
     for dataset in datasets:
         params = {
@@ -66,7 +66,7 @@ def _get_panther(geneset, background, organism, setting = None):
     return df
 
 
-def geo_analysis(adata_st, mode=['instant_fsm', 'instant_biclustering', 'sprawl_biclustering'], performance_flag = False, organism = 10090, do_revigo = True, setting = "module"):
+def geo_analysis(adata_st, mode=['instant_fsm', 'instant_biclustering', 'sprawl_biclustering'], organism = 10090, do_revigo = True, setting = "module"):
     '''
     Perform the geo analysis.
     Arguments
@@ -74,15 +74,18 @@ def geo_analysis(adata_st, mode=['instant_fsm', 'instant_biclustering', 'sprawl_
     adata_st : AnnData
         Spatial transcriptomic data.
     mode : list
-        List of analysis to perform. .
-    performance_flag : bool
-        Flag to indicate whether to print the performance of the analysis.
+        List of analysis to perform. Values must be in ['instant_fsm', 'instant_biclustering', 'sprawl_biclustering'].
     organism : int
         Taxon ID of the organism.
+    do_revigo : bool
+        Perform revigo analysis.
     setting : str
         Setting to perform the analysis. Either 'module' or 'cell'.
-    dataset : str
-        ID of the annotation dataset to perform enrichment on.
+    
+    Returns
+    ----------
+    adata_st : AnnData
+        Spatial transcriptomic data.
     '''
     assert type(mode) == list, "`mode` should be a list"
     print("Performing GO Enrichment Analysis...")

@@ -81,6 +81,8 @@ def run_sprawl(adata_st, methods = ['Peripheral', 'Radial', 'Punctate', 'Central
         if 'cell_boundary' in adata_st.uns: #check whether cell_boundary has been provided in the data
             cell_boundaries = adata_st.uns['cell_boundary']
             cell_boundaries.index = cell_boundaries.index.astype(str)
+            # print(cell_boundaries)
+            # print(cell)
             # cell_boundaries.set_index('uID', inplace=True)
             if 'absZ' in df_transcripts.columns: #check whether data is 3D
                 for n2, Z in cell.groupby("absZ"):

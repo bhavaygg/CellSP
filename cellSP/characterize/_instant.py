@@ -11,7 +11,7 @@ from itertools import combinations
 import timeit
 import random
 from datetime import timedelta
-
+from sklearn.utils import check_array
 def run_instant(adata_st, distance_threshold, threads, n_vertices, alpha_cpb = 0.001, alpha_fsm = 0.001, filename = None, remove_file = True, is_sliced = True):
     '''
     Run Instant on the spatial data to find colocalized gene pairs.
@@ -44,7 +44,10 @@ def run_instant(adata_st, distance_threshold, threads, n_vertices, alpha_cpb = 0
         if is_sliced:
             obj.run_ProximalPairs3D_slice(distance_threshold = distance_threshold, min_genecount = 20)
         else:
+            df_temp = adata_st.uns["transcripts"].copy()
+            adata_st.uns["transcripts"]['absZ'] = adata_st.uns["transcripts"]['absZ_raw']
             obj.run_ProximalPairs3D(distance_threshold = distance_threshold, min_genecount = 20)
+            adata_st.uns['transcripts'] = df_temp
     else:
         obj.run_ProximalPairs(distance_threshold = distance_threshold, min_genecount = 20)
     obj.run_GlobalColocalization(high_precision = True, alpha_cellwise = alpha_cpb)
@@ -86,7 +89,7 @@ def analyse_fsm(adata_st, top_k, n_vertices, distance_threshold, alpha = 0.01):
     adata_st.uns[f"instant_fsm"] = df_topk
     return adata_st
 
-def bicluster_instant(adata_st, distance_threshold, num_biclusters = 100, randomized_searches = 50000, scale_data = True, alpha = 0.001, cell_threshold = 5, threads = 1, expand = True): #, randomized_searches = 50000
+def bicluster_instant(adata_st, distance_threshold, num_biclusters = 100, randomized_searches = 50000, scale_data = True, alpha = 0.001, cell_threshold = 5, threads = 1, expand = True, topk = None): #, randomized_searches = 50000
     '''
     Perform LAS biclustering on InSTAnT PP-test p-values to find spatial gene expression patterns.
     Arguments
@@ -111,6 +114,9 @@ def bicluster_instant(adata_st, distance_threshold, num_biclusters = 100, random
     if 'cpb_results' in adata_st.uns.keys():
         cpb_results = adata_st.uns['cpb_results'].reset_index()
         cpb_results = cpb_results[cpb_results.p_val_cond <= alpha]
+        print(cpb_results.shape)
+        if topk != None:
+            cpb_results = cpb_results.iloc[:topk]
     else:
         raise ValueError("CPB results not found in adata_st.uns. Please run `run_instant` first.")
     print("Bi-clustering InSTAnT CPB results...")
@@ -127,7 +133,7 @@ def bicluster_instant(adata_st, distance_threshold, num_biclusters = 100, random
         pair_genes.append(i.gene_id2)
         for pos, cell in enumerate(pp_pvalues):
             assert cell[index1, index2] == cell[index1][index2]
-            pval_matrix[pos][n] = cell[index1][index2]
+            pval_matrix[pos][n] = cell[index1][index2] if cell[index1][index2] != 0 else 1e-64
     pval_matrix = -np.log10(pval_matrix.copy())
     pair_genes = list(set(pair_genes))
     gene_pairs = [f"({x.split(',')[0]},{x.split(',')[1][1:]})" for x in gene_pairs]
@@ -144,6 +150,7 @@ def bicluster_instant(adata_st, distance_threshold, num_biclusters = 100, random
     col_log_combs = _log_combs(pval_matrix.shape[1])[1:] # self._log_combs(num_cols)[1:] discards the case where the bicluster has 0 columns
     col_range = np.arange(1, pval_matrix.shape[1] + 1)
     rows = []
+    print("end")
     for bicluster in biclustering.biclusters:
         if len(bicluster.cols) > 2:
             bicluster_pairs = gene_pairs_array[bicluster.cols]

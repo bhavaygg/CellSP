@@ -58,7 +58,7 @@ def _calculate_density_concentric_circles(points, num_circles, center = 0):
 def _plot_density_concentric_circles(densities, num_circles, fig, ax):
     min_radius = 0.0
     circle_radii = np.linspace(min_radius, 1, num_circles + 1)
-    norm = Normalize(vmin=np.min(densities), vmax=np.max(densities))
+    norm = Normalize(vmin=0, vmax=1)
     colors = matplotlib.colormaps.get_cmap('Blues')(norm(densities))
     circles = []
     for n, i in enumerate(densities):
@@ -137,6 +137,8 @@ def _plot_circular_cell(density_module, density_background, median_positions, mo
             fig = plt.figure(figsize=(5,7))
             ax = plt.subplot(211)
             ax1 = plt.subplot(212)
+        density_module = np.array(density_module) / np.max(density_module)
+        density_background = np.array(density_background) / np.max(density_background)
         _plot_density_concentric_circles(density_module, num_ccircles, fig, ax)
         _plot_density_concentric_circles(density_background, num_ccircles, fig, ax1)
         ax.set_title("Module", y=-0.1)
@@ -397,6 +399,7 @@ def visualize_pattern(adata_st, module_number, pattern, mode = "instant_fsm", fi
 
     print("Visualizing subcellular patterns...")
     results = adata_st.uns[mode]
+    adata_st.uns['transcripts']['uID'] = adata_st.uns['transcripts']['uID'].astype(str)
     if pattern in ["Cluster", "Concentric"]:
             if pattern == "Cluster":
                 pattern = "Radial"

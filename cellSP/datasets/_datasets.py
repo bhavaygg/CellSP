@@ -12,6 +12,13 @@ def load_data(sc_adata = None, st_adata = None):
         Path to the single cell data.
     st_adata : str
         Path to the spatial transcriptomic data.
+    
+    Returns
+    ----------
+    sc_adata : AnnData or None
+        Anndata object containing the single cell data.
+    st_adata : AnnData or None
+        Anndata object containing the spatial transcriptomic data.
     '''
     if sc_adata is not None and st_adata is not None:
         if Path(sc_adata).suffix.lower() == ".h5ad":
@@ -46,6 +53,11 @@ def sc_to_anndata(expression):
     ----------
     expression : str
         Path to the single-cell expression data.
+    
+    Returns
+    ----------
+    adata : AnnData
+        Anndata object containing the single-cell expression data.
     '''
     if Path(expression).suffix.lower() == ".csv":
         df = pd.read_csv(expression, index_col = 0)
@@ -70,6 +82,11 @@ def st_to_anndata(transcripts, cell_type = None, cell_boundary = None):
         Path to the single-cell cell type data.
     cell_boundary : str
         Path to the single-cell cell boundary data.
+    
+    Returns
+    ----------
+    adata : AnnData
+        Anndata object containing the spatial transcriptomic data.
     '''
     if Path(transcripts).suffix.lower() == ".csv":
         df = pd.read_csv(transcripts)

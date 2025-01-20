@@ -4,13 +4,18 @@ from pathlib import Path
 
 def read_h5ad(filename, backed=None):
     """
-        Load AnnData object from h5ad.
-        Arguments
-        ----------
-        filename : str
-            Name of the file to load.
-        backed : str
-            If ‘r’, load AnnData in backed mode instead of fully loading it into memory (memory mode). If you want to modify backed attributes of the AnnData object, you need to choose ‘r+’.
+    Load AnnData object from h5ad.
+    Arguments
+    ----------
+    filename : str
+        Name of the file to load.
+    backed : str
+        If ‘r’, load AnnData in backed mode instead of fully loading it into memory (memory mode). If you want to modify backed attributes of the AnnData object, you need to choose ‘r+’.
+
+    Returns
+    ----------
+    adata : AnnData
+        Anndata object.
     """
 
     adata = anndata.read_h5ad(filename, backed=backed)
@@ -19,20 +24,20 @@ def read_h5ad(filename, backed=None):
 
 def write_h5ad(data, filename):
     """
-        Write AnnData to h5ad.
-        Arguments
-        ----------
-        data : AnnData
-            Anndata object to save.
-        filename : str
-            Name of the file to save.
+    Write AnnData to h5ad.
+    Arguments
+    ----------
+    data : AnnData
+        Anndata object to save.
+    filename : str
+        Name of the file to save.
     """
     adata = data.copy()
     adata.write(filename, compression="gzip")
 
 def combine_geo(adata_st, file_path = ".", mode=['instant_fsm', 'instant_biclustering', 'sprawl_biclustering'], setting = "module", filenames = ['instant_fsm', 'instant_biclustering', 'sprawl_biclustering']):
     '''
-    Combine the geo analysis.
+    Combine the geo analysis and write to an excel file.
     Arguments
     ----------
     adata_st : AnnData
@@ -45,6 +50,10 @@ def combine_geo(adata_st, file_path = ".", mode=['instant_fsm', 'instant_biclust
         Setting to perform the analysis. Either 'module' or 'cell'.
     filenames : list
         List of filenames for each mode to save. By default saves as "{mode}_geo_{setting}.xlsx".
+    
+    Returns
+    ----------
+    None
     '''
     assert type(mode) == list, "`mode` should be a list"
     for n, method in enumerate(mode):
