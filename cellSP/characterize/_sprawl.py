@@ -144,7 +144,7 @@ def run_sprawl(adata_st, methods = ['Peripheral', 'Radial', 'Punctate', 'Central
 
 
 
-def bicluster_sprawl(adata_st, methods = ['Peripheral', 'Radial', 'Punctate', 'Central'], num_biclusters = 100, randomized_searches = 50000, scale_data = True, cell_threshold = 5, threads = 1, expand = True):# 'Punctate', 'Central', 50000
+def bicluster_sprawl(adata_st, methods = ['Peripheral', 'Radial', 'Punctate', 'Central'], num_biclusters = 10, randomized_searches = 50000, scale_data = True, cell_threshold = 5, threads = 1, expand = True):# 'Punctate', 'Central', 50000
     '''
     Perform LAS biclustering on SPRAWL spatial pattern scores to find spatial gene expression patterns.
     Arguments

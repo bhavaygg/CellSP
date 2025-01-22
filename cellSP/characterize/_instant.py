@@ -89,7 +89,7 @@ def analyse_fsm(adata_st, top_k, n_vertices, distance_threshold, alpha = 0.01):
     adata_st.uns[f"instant_fsm"] = df_topk
     return adata_st
 
-def bicluster_instant(adata_st, distance_threshold, num_biclusters = 100, randomized_searches = 50000, scale_data = True, alpha = 0.001, cell_threshold = 5, threads = 1, expand = True, topk = None): #, randomized_searches = 50000
+def bicluster_instant(adata_st, distance_threshold, num_biclusters = 10, randomized_searches = 50000, scale_data = True, alpha = 0.001, cell_threshold = 5, threads = 1, expand = True, topk = None): #, randomized_searches = 50000
     '''
     Perform LAS biclustering on InSTAnT PP-test p-values to find spatial gene expression patterns.
     Arguments
