@@ -21,6 +21,8 @@ Alternatively, the package can be installed using pip.
 pip install CellSP
 ```
 
+__Note: Not operational as of now__
+
 ***
 ## How to use CellSP
 
