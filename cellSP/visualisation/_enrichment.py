@@ -17,9 +17,6 @@ def _run_revigo(module, ds):
     running = 1
     while (running!=0):
         r = requests.get(f"http://revigo.irb.hr/QueryJob?jobid={jobid}&type=jstatus")
-        # if 'error' in r.json():
-        #     print("here")
-        #     break
         running = r.json()['running']
         time.sleep(2)
     # Fetch results

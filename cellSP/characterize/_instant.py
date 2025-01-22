@@ -150,7 +150,6 @@ def bicluster_instant(adata_st, distance_threshold, num_biclusters = 100, random
     col_log_combs = _log_combs(pval_matrix.shape[1])[1:] # self._log_combs(num_cols)[1:] discards the case where the bicluster has 0 columns
     col_range = np.arange(1, pval_matrix.shape[1] + 1)
     rows = []
-    print("end")
     for bicluster in biclustering.biclusters:
         if len(bicluster.cols) > 2:
             bicluster_pairs = gene_pairs_array[bicluster.cols]

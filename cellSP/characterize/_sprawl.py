@@ -81,9 +81,6 @@ def run_sprawl(adata_st, methods = ['Peripheral', 'Radial', 'Punctate', 'Central
         if 'cell_boundary' in adata_st.uns: #check whether cell_boundary has been provided in the data
             cell_boundaries = adata_st.uns['cell_boundary']
             cell_boundaries.index = cell_boundaries.index.astype(str)
-            # print(cell_boundaries)
-            # print(cell)
-            # cell_boundaries.set_index('uID', inplace=True)
             if 'absZ' in df_transcripts.columns: #check whether data is 3D
                 for n2, Z in cell.groupby("absZ"):
                     if 'absZ' in cell_boundaries.columns: #check whether cell_boundary is 3D
@@ -189,7 +186,6 @@ def bicluster_sprawl(adata_st, methods = ['Peripheral', 'Radial', 'Punctate', 'C
                 bicluster_cells = uids[bicluster.rows]
                 calculated_score = _get_sprawl_score(bicluster.rows, df_sp_scaled.values, col_range, col_log_combs, row_log_combs)
                 rows.append([method, ','.join(map(str, bicluster_genes)), ','.join(map(str, bicluster_cells)), len(bicluster_cells), 0, bicluster.score, calculated_score, np.mean(df_sp.iloc[bicluster.rows][genes[bicluster.cols]].values), calculated_score])
-                print(rows[-1])
     df_results = pd.DataFrame(rows, columns=['method', 'genes', 'uIDs', '#cells', 'combined', "pre cell expansion", "post cell expansion", "sprawl average", "sprawl score"])
     df_results['sprawl average'] = df_results['sprawl average'].astype('str')
     df_results['sprawl score'] = df_results['sprawl score'].astype('str')
@@ -324,8 +320,7 @@ def _radial(cell, num_iterations, num_pairs):
                     spot_inds = np.random.choice(cell.n,count,replace=False)
                     null = random_mean_pairs_angle(all_spots[spot_inds], cell_centroid, num_pairs)
                 except:
-                    print(all_spots.shape, cell.n, count)
-                    raise("dsada")
+                    raise("Some error")
                 null_dists.append(null)
 
             null_dists = np.array(null_dists)
