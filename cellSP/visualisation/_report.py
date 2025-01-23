@@ -1,9 +1,5 @@
-import plotly as py
 import pandas as pd
 import numpy as np
-# import plotly.plotly as py
-import plotly.tools as plotly_tools
-import plotly.graph_objs as go
 import matplotlib.pyplot as plt
 from IPython.display import HTML
 from ._enrichment import run_revigo

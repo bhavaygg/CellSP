@@ -1,7 +1,5 @@
 import pandas as pd
 import numpy as np
-import pysam
-
 import multiprocessing as mp
 import operator as op
 import functools
