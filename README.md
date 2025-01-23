@@ -20,7 +20,7 @@ This will create a new conda environment with the name `CellSP` and has all depe
 Alternatively, the package can be installed using pip.
 
 ```
-pip install CellSP
+pip install cellSP
 ```
 
 __Note: Not operational as of now__
