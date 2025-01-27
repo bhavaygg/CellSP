@@ -110,7 +110,7 @@ adata_st = cellSP.geo.geo_analysis(adata_st, setting="cell")
 
 To help visualize modules defined by the five types of subcellular spatial patterns (four types identified by SPRAWL and colocalization patterns identified by InSTAnT), we developed three complementary plotting techniques.
 
-![CellSP_visualizations](https://raw.githubusercontent.com/bhavaygg/main/figures/Overview.png)
+![CellSP_visualizations](https://raw.githubusercontent.com/bhavaygg/main/figures/CellSP_visualizations.png)
 
 ***
 
