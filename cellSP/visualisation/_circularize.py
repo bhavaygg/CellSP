@@ -65,7 +65,7 @@ def _plot_density_concentric_circles(densities, num_circles, fig, ax):
         im = circles.append(plt.Circle((1,1), circle_radii[n+1], facecolor=colors[n], edgecolor="black", linewidth=0.7, alpha=0.7))
     for i in circles[::-1]:
         ax.add_patch(i)
-    cb = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap='Blues'), ax=ax, label='Density', shrink = 0.3, aspect = 20*0.3)
+    cb = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap='Blues'), ax=ax, label='Abundance', shrink = 0.3, aspect = 20*0.3)
     fig.set_tight_layout(True)
     ax.tick_params(axis='both', which='both', bottom=False, top=False, left=False, right=False, labelbottom=False, labelleft=False)
     ax.spines['top'].set_visible(False)
@@ -106,12 +106,50 @@ def _calculate_density(cell, module_genes, pattern, num_sectors = None, num_ccir
                , _calculate_density_concentric_circles(points = np.concatenate((points_rest_x, points_rest_y), axis=1), num_circles=num_ccircles)
 
 def _plot_spatial_cells(median_positions, module_cells, ax):
-    positive_cells = median_positions[median_positions.uID.isin([int(x) for x in module_cells])]
-    negative_cells = median_positions[~median_positions.uID.isin([int(x) for x in module_cells])]
+    positive_cells = median_positions[median_positions.uID.isin([x for x in module_cells])]
+    negative_cells = median_positions[~median_positions.uID.isin([x for x in module_cells])]
     ax.scatter(positive_cells.absX, positive_cells.absY, label="Module", color="red", alpha=0.6, s=1.5)
     ax.scatter(negative_cells.absX, negative_cells.absY, label="Background", color="grey", alpha=0.2, s=0.75)
 
-def _plot_circular_cell(density_module, density_background, median_positions, module_cells, num_sectors, num_ccircles, pattern, genes, pdiff = None, positions = True, filename = None):
+
+def plot_module_tissue(adata_st, module_number, pattern, mode, show = True, filename = None):
+    results = adata_st.uns[mode]
+    module = results.iloc[module_number]
+    module_genes = [x.lower() for x in module.genes.split(",")]
+    module_cells = [x for x in module.uIDs.split(",")]
+    median_positions = adata_st.uns['transcripts'].groupby('uID')[['absX', 'absY']].median()
+    median_positions.reset_index(inplace=True)
+    fig, ax = plt.subplots(figsize=(5,5))
+    _plot_spatial_cells(median_positions, module_cells, ax)
+    if filename != None:
+        plt.savefig(filename, dpi=1000)
+    if show:
+        plt.show()
+
+def _run_umap(gene_ex):
+    reducer = umap.UMAP()
+    X_umap = reducer.fit_transform(gene_ex)
+    df_umap = pd.DataFrame(X_umap, columns=["UMAP-1", "UMAP-2"], index = gene_ex.index)
+    return df_umap
+
+
+def plot_module_umap(adata_st, module_number, pattern, mode, show = True, filename = None):
+    results = adata_st.uns[mode]
+    module = results.iloc[module_number]
+    module_genes = [x.lower() for x in module.genes.split(",")]
+    module_cells = [x for x in module.uIDs.split(",")]
+    if 'X_UMAP' not in adata_st.obsm.keys():
+        adata_st.obsm['X_UMAP'] = run_umap(adata_st)
+    fig, ax = plt.subplots(figsize=(5,5))
+    colors = ['red' if x in module_cells else 'grey' for x in adata_st.obs_names.values]
+    sizes = [10 if x in module_cells else 1 for x in adata_st.obs_names.values]
+    ax.scatter(adata_st.obsm['X_UMAP'].values[:, 0], adata_st.obsm['X_UMAP'].values[:, 1], c=colors, s=sizes)
+    if show:
+        plt.show()
+    if filename != None:
+        plt.savefig(filename, dpi=1000)
+
+def _plot_circular_cell(density_module, density_background, median_positions, module_cells, num_sectors, num_ccircles, pattern, genes, pdiff = None, positions = True, filename = None, show = True):
     if pattern == "Radial" or pattern == "Punctate":
         if positions:
             fig = plt.figure(figsize=(12,5))
@@ -152,7 +190,8 @@ def _plot_circular_cell(density_module, density_background, median_positions, mo
     plt.tight_layout()
     if filename != None:
         plt.savefig(filename, dpi=300)
-    plt.show()
+    if show:
+        plt.show()
 
 def _calculate_gene_cell_neighborhood_slice(cell, geneList, distance_threshold):
     slice_neighbors = []
@@ -204,7 +243,7 @@ def _plot_neighborhood_heatmap(knn_matrix_module, knn_matrix_nonmodule, all_gene
     ax.hlines(len(module_genes), 0, len(indices), color='black', linewidth=2)
     ax.set_title("Normalized Sum Ratio")
 
-def visualize_modules(adata_st, mode = ['instant_fsm', 'instant_biclustering', 'sprawl_biclustering'], num_sectors = 10, num_ccircles = 5, distance_threshold = 2, positions = True, performance_flag = True, is_sliced = True, header = False):
+def visualize_modules(adata_st, mode = ['instant_biclustering', 'sprawl_biclustering'], num_sectors = 10, num_ccircles = 5, distance_threshold = 2, positions = True, performance_flag = True, is_sliced = True, header = False):
     '''
     Model the subcellular patterns found by FSM & LAS using extrapolated scRNA-seq data.
     Arguments
@@ -296,7 +335,7 @@ def visualize_modules(adata_st, mode = ['instant_fsm', 'instant_biclustering', '
                     plt.tight_layout()
                     plt.show()
 
-def visualize_individual_module(adata_st, module_number, filename = None, num_sectors = 10, num_ccircles = 5, mode = 'instant_fsm', distance_threshold = 2, is_sliced = True, positions = True, header = False):
+def visualize_individual_module(adata_st, module_number, filename = None, num_sectors = 10, num_ccircles = 5, mode = 'instant_biclustering', distance_threshold = 2, is_sliced = True, positions = True, header = False, show = True):
     '''
     Model the subcellular patterns for a specific module found by FSM & LAS using extrapolated scRNA-seq data.
     Arguments
@@ -372,9 +411,10 @@ def visualize_individual_module(adata_st, module_number, filename = None, num_se
         plt.tight_layout()
         if filename != None:
             plt.savefig(filename, dpi=1000)
-        plt.show()
+        if show:
+            plt.show()
 
-def visualize_pattern(adata_st, module_number, pattern, mode = "instant_fsm", filename = None, num_sectors = 10, num_ccircles = 5, distance_threshold = 2, is_sliced = True, positions = False, header = False):
+def visualize_pattern(adata_st, module_number, pattern, mode = "instant_biclustering", filename = None, num_sectors = 10, num_ccircles = 5, distance_threshold = 2, is_sliced = True, positions = False, header = False, show = True):
     '''
     Model a specific subcellular patterns for a specific module found by FSM & LAS using extrapolated scRNA-seq data.
     Arguments
@@ -400,7 +440,7 @@ def visualize_pattern(adata_st, module_number, pattern, mode = "instant_fsm", fi
     print("Visualizing subcellular patterns...")
     results = adata_st.uns[mode]
     adata_st.uns['transcripts']['uID'] = adata_st.uns['transcripts']['uID'].astype(str)
-    if pattern in ["Cluster", "Concentric"]:
+    if pattern in ["Radial", "Concentric"]:
             if pattern == "Cluster":
                 pattern = "Radial"
             median_positions = adata_st.uns['transcripts'].groupby('uID')[['absX', 'absY']].median()
@@ -417,7 +457,7 @@ def visualize_pattern(adata_st, module_number, pattern, mode = "instant_fsm", fi
             pdiff = None
             if 'tangram' in module.keys() and 'baseline' in module.keys():
                 pdiff = module['tangram'] - module['baseline']
-            _plot_circular_cell(density_module, density_background, median_positions, module.uIDs.split(","), num_sectors, num_ccircles, pattern, module.genes, pdiff, positions, filename)
+            _plot_circular_cell(density_module, density_background, median_positions, module.uIDs.split(","), num_sectors, num_ccircles, pattern, module.genes, pdiff, positions, filename, show)
     else:
         median_positions = adata_st.uns['transcripts'].groupby('uID')[['absX', 'absY']].median()
         df_transcripts = adata_st.uns['transcripts']
@@ -454,5 +494,6 @@ def visualize_pattern(adata_st, module_number, pattern, mode = "instant_fsm", fi
         plt.tight_layout()
         if filename != None:
             plt.savefig(filename, dpi=1000)
-        plt.show()
+        if show:
+            plt.show()
 

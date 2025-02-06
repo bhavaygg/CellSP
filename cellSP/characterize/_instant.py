@@ -157,8 +157,8 @@ def bicluster_instant(adata_st, distance_threshold, num_biclusters = 10, randomi
             bicluster.rows = _expand_bicluster_rows(pval_matrix, bicluster.rows, bicluster.cols)
             bicluster_cells = uids[bicluster.rows]
             calculated_score = _get_sprawl_score(bicluster.rows, pval_matrix_scaled, col_range, col_log_combs, row_log_combs)
-            rows.append([', '.join(map(str, bicluster_pairs)),','.join(map(str, bicluster_genes)), ','.join(map(str, bicluster_cells)), len(bicluster_cells), 0, bicluster.score, calculated_score, np.mean(pval_matrix[bicluster.rows][:, bicluster.cols]), calculated_score])
-    df_results = pd.DataFrame(rows, columns=['gene-pairs', 'genes', 'uIDs', '#cells', 'combined', "pre cell expansion", "post cell expansion", "instant average", "instant score"])
+            rows.append([', '.join(map(str, bicluster_pairs)),','.join(map(str, bicluster_genes)), ','.join(map(str, bicluster_cells)), len(bicluster_cells), 0, calculated_score])
+    df_results = pd.DataFrame(rows, columns=['gene-pairs', 'genes', 'uIDs', '#cells', 'combined', "LAS score"])
     df_results['instant average'] = df_results['instant average'].astype('str')
     df_results['instant score'] = df_results['instant score'].astype('str')
     score_issues = []

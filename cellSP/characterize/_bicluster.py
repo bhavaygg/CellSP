@@ -272,6 +272,7 @@ class LargeAverageSubmatrices():
 
 
 def _modified_jaccard_similarity(list1, list2):
+    #overlap coefficient
     set1 = set(list1)
     set2 = set(list2)
     intersection = len(set1.intersection(set2))
