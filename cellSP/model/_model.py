@@ -37,7 +37,7 @@ def _subsample_random(positive_cells, negative_cells):
     df_temp = pd.concat([positive_cells, negative_cells])
     return df_temp
 
-def _gen_corr_matrix(X_extrapolated, X_tangram, module_genes):
+def _gen_corr_matrix(X_extrapolated, X_tangram, module_genes, corr_threshold):
     '''
         Generate correlation matrix for the module genes.
     '''
@@ -49,9 +49,9 @@ def _gen_corr_matrix(X_extrapolated, X_tangram, module_genes):
     for gene in module_genes:
         if X_extrapolated != None:
             tempdf = df_corr_ex[module_genes].drop(module_genes).sort_values(by=gene,ascending=False)
-            ex_corr_genes.extend(list(tempdf[tempdf[gene] > 0.8].index.values))
+            ex_corr_genes.extend(list(tempdf[tempdf[gene] > corr_threshold].index.values))
         tempdf = df_corr_tg[module_genes].drop(module_genes).sort_values(by=gene,ascending=False)
-        tg_corr_genes.extend(list(tempdf[tempdf[gene] > 0.8].index.values))
+        tg_corr_genes.extend(list(tempdf[tempdf[gene] > corr_threshold].index.values))
     return ex_corr_genes, tg_corr_genes
 
 def _run_cv(df_cells, X_extrapolated, X_tangram, all_genes, module_genes, ex_corr_genes, tg_corr_genes, X_ct = None, n_splits = 5, cell_type = True, shap_ = False, **kwargs):
@@ -90,8 +90,8 @@ def _run_cv(df_cells, X_extrapolated, X_tangram, all_genes, module_genes, ex_cor
         scores_iter.append(balanced_accuracy_score(y_test, y_pred))
         if shap_:
             explainer = shap.TreeExplainer(model, X_train_tg)
-            shap_values = explainer.shap_values(X_test_tg, check_additivity = False)
-            shap_scores = np.mean(np.absolute(shap_values[0]) + np.absolute(shap_values[1]), axis=0)
+            shap_values = explainer.shap_values(X_test_tg, check_additivity = False).T
+            shap_scores = np.mean(np.absolute(shap_values[0]) + np.absolute(shap_values[1]), axis=1)
             shap_mean_scores.append(shap_scores)
         model.fit(X_train_tg_corr, y_train)
         y_pred = model.predict(X_test_tg_corr)
@@ -119,7 +119,7 @@ def _run_cv(df_cells, X_extrapolated, X_tangram, all_genes, module_genes, ex_cor
         return np.mean(scores, axis = 0), (top_labels, shap_scores)
     return np.mean(scores, axis = 0), None
 
-def model_modules(adata_st, mode = ['instant_fsm', 'instant_biclustering', 'sprawl_biclustering'], n_repeats = 25, subsample = True, do_shap = False, **kwargs):
+def model_modules(adata_st, mode = ['instant_biclustering', 'sprawl_biclustering'], n_repeats = 25, subsample = True, do_shap = False, corr_threshold = 0.98, **kwargs):
     '''
     Model the subcellular patterns found by FSM & LAS using extrapolated scRNA-seq data.
     Arguments
@@ -127,7 +127,7 @@ def model_modules(adata_st, mode = ['instant_fsm', 'instant_biclustering', 'spra
     adata_st : AnnData
         Anndata object containing spatial transcriptomics data.
     mode: list
-        List of characterizations to model for. Options are 'instant_fsm', 'instant_biclustering', 'sprawl_biclustering'.
+        List of characterizations to model for. Options are 'instant_biclustering', 'sprawl_biclustering'.
     n_repeats : int
         Number of repeats of sampling.
     subsample : bool
@@ -163,7 +163,7 @@ def model_modules(adata_st, mode = ['instant_fsm', 'instant_biclustering', 'spra
             columns_to_drop = []
             # if 'cell_type' in adata_st.obs.keys() and subsample:
                 # columns_to_drop.append('cell_type')
-            ex_corr_genes, tg_corr_genes = _gen_corr_matrix(X_extrapolated, X_tangram_module.set_index('uID').copy(), module_genes)
+            ex_corr_genes, tg_corr_genes = _gen_corr_matrix(X_extrapolated, X_tangram_module.set_index('uID').copy(), module_genes, corr_threshold)
             scores = []
             X_ct = None
             if 'cell_type' in adata_st.obs.keys() and subsample:

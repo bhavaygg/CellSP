@@ -185,8 +185,8 @@ def bicluster_sprawl(adata_st, methods = ['Peripheral', 'Radial', 'Punctate', 'C
                 bicluster_genes = genes[bicluster.cols]
                 bicluster_cells = uids[bicluster.rows]
                 calculated_score = _get_sprawl_score(bicluster.rows, df_sp_scaled.values, col_range, col_log_combs, row_log_combs)
-                rows.append([method, ','.join(map(str, bicluster_genes)), ','.join(map(str, bicluster_cells)), len(bicluster_cells), 0, bicluster.score, calculated_score, np.mean(df_sp.iloc[bicluster.rows][genes[bicluster.cols]].values), calculated_score])
-    df_results = pd.DataFrame(rows, columns=['method', 'genes', 'uIDs', '#cells', 'combined', "pre cell expansion", "post cell expansion", "sprawl average", "sprawl score"])
+                rows.append([method, ','.join(map(str, bicluster_genes)), ','.join(map(str, bicluster_cells)), len(bicluster_cells), 0, calculated_score])
+    df_results = pd.DataFrame(rows, columns=['method', 'genes', 'uIDs', '#cells', 'combined', "LAS score"])
     df_results['sprawl average'] = df_results['sprawl average'].astype('str')
     df_results['sprawl score'] = df_results['sprawl score'].astype('str')
     score_issues = []

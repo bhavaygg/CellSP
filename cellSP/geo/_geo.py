@@ -66,7 +66,7 @@ def _get_panther(geneset, background, organism, setting = None):
     return df
 
 
-def geo_analysis(adata_st, mode=['instant_fsm', 'instant_biclustering', 'sprawl_biclustering'], organism = 10090, do_revigo = True, setting = "module"):
+def geo_analysis(adata_st, mode=['instant_fsm', 'instant_biclustering', 'sprawl_biclustering'], organism = 10090, do_revigo = True, setting = "module", corr_threshold = 0.98):
     '''
     Perform the geo analysis.
     Arguments
@@ -81,7 +81,8 @@ def geo_analysis(adata_st, mode=['instant_fsm', 'instant_biclustering', 'sprawl_
         Perform revigo analysis.
     setting : str
         Setting to perform the analysis. Either 'module' or 'cell'.
-    
+    corr_threshold: float
+        Correlation threshold for finding genes correlated to the marker genes of the module cells (default: `0.98`).  
     Returns
     ----------
     adata_st : AnnData
@@ -116,7 +117,7 @@ def geo_analysis(adata_st, mode=['instant_fsm', 'instant_biclustering', 'sprawl_
                 gene_expression = adata_st.X
                 correlation_matrix = pd.DataFrame(np.corrcoef(gene_expression, rowvar=False), columns=adata_st.var_names, index=adata_st.var_names)[geneset_list]
                 for gene in correlation_matrix.columns:
-                    geneset_list.extend(correlation_matrix[correlation_matrix[gene] > 0.98].index.values)
+                    geneset_list.extend(correlation_matrix[correlation_matrix[gene] > corr_threshold].index.values)
                 geneset_list = list(set(geneset_list).difference(set(i['genes'].split(","))))
                 geneset = ",".join(geneset_list)
                 adata_st.uns[method].at[n, "#pc_genes"] = len(geneset_list)

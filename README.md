@@ -1,6 +1,5 @@
-# CellSP
-__Note: Repository is work in progress__
-<br>
+BOX# CellSP
+
 <br>
 CellSP is a python package for the analysis of subcellular spatial transcriptomic data. CellSP works with datasets generated at single-modulecule resolution from technologies like Xenium, CosMx, MERSCOPE or other ISH-like data. Using existing tools [InSTAnT](https://github.com/bhavaygg/InSTAnT) and [SPRAWL](https://github.com/salzman-lab/SPRAWL/), CellSP identifies statistically signficant subcellular patterns of gene transcripts and uses a biclustering algorithm to aggregate these patterns over hundereds of cells to produce "gene-cell modules". These modules represent the consistent detection of the same subcellular pattern by a set of genes in the same cells and offer a summarized and biologically interpretable desciption of subcellular patterns. CellSP provides specialized techniques for visualizing such modules and their defining spatial patterns. Additionally, CellSP utilize Gene Ontology (GO) enrichments tests to offer functionsal insights into the genes comprising the module as CellSPll as the cells comprising the module.
 
@@ -23,10 +22,10 @@ Alternatively, the package can be installed using pip.
 pip install cellSP
 ```
 
-__Note: Not operational as of now__
-
 ***
 ## How to use CellSP
+
+The detailed tutorial is available [here](https://github.com/bhavaygg/CellSP/blob/main/figures/tutorial.ipynb).
 
 CellSP expects data (both single cell and spatial transcriptomic) to be in AnnData format and can be loaded using 
 
@@ -36,7 +35,7 @@ adata_sc, adata_st = cellSP.ds.load_data(sc_adata= 'files/adata_sc.h5ad', st_ada
 
 **Note - Single cell data on the same tissue is required for characterization of the module cells.**
 
-To load raw csv data, refer to [file]() for instructions.
+To load raw csv data, refer to the [tutorial](https://github.com/bhavaygg/CellSP/blob/main/figures/tutorial.ipynb) for instructions.
 
 CellSP preprocess the input single cell data by performing denoising using [MAGIC](https://github.com/KrishnaswamyLab/MAGIC) and impute the expression of genes not in the ST panel using [Tangram](https://github.com/broadinstitute/Tangram/). 
 
@@ -112,6 +111,14 @@ To help visualize modules defined by the five types of subcellular spatial patte
 
 ![CellSP_visualizations](https://github.com/bhavaygg/CellSP/blob/main/figures/CellSP_visualizations.png)
 
+
+SPRAWL identifies spatial localization patterns (peripheral, central, radial, or punctate) for each gene in individual cells. CellSP aggregates these patterns across cells by representing each cell within a standardized unit circle, enabling comparative analyses.
+
+For “central” and “peripheral” patterns, gene densities are averaged across concentric rings of the circle, revealing expected trends: higher densities in the innermost rings for central patterns and in the outermost rings for peripheral patterns.
+
+For “punctate” and “radial” patterns, the circle is divided into sectors, and densities are aligned to highlight directional concentration. Module genes are expected to cluster in specific sectors, while non-module genes display uniform distributions.
+
+InSTAnT identifies colocalized gene pairs based on their spatial proximity. A proximity enrichment score compares the colocalization of gene pairs in module cells versus non-module cells. Visualization includes heatmaps showing enrichment scores for module and control genes, highlighting patterns of colocalization and contrasting them with non-module gene behavior.
 ***
 
 ### How to cite CellSP
