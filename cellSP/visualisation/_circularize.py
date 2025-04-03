@@ -335,84 +335,6 @@ def visualize_modules(adata_st, mode = ['instant_biclustering', 'sprawl_bicluste
                     plt.tight_layout()
                     plt.show()
 
-def visualize_individual_module(adata_st, module_number, filename = None, num_sectors = 10, num_ccircles = 5, mode = 'instant_biclustering', distance_threshold = 2, is_sliced = True, positions = True, header = False, show = True):
-    '''
-    Model the subcellular patterns for a specific module found by FSM & LAS using extrapolated scRNA-seq data.
-    Arguments
-    ----------
-    adata_st : AnnData
-        Anndata object containing spatial transcriptomics data.
-    module_number: int
-        Index of the module to visualize.
-    filename: str
-        Name of the file to save the plot at.
-    num_sectors: int
-        Number of sectors to divide the circular cell into.
-    num_ccircles: int
-        Number of concentric circles to divide the circular cell into.
-    mode: str
-        Mode of the selected module. Options are 'instant_fsm', 'instant_biclustering', 'sprawl_biclustering'.
-    distance_threshold: float
-        Distance threshold used for PP-Test.
-    '''
-    print("Visualizing subcellular patterns...")
-    if mode == 'sprawl_biclustering':
-        sprawl_results = adata_st.uns[mode]
-        median_positions = adata_st.uns['transcripts'].groupby('uID')[['absX', 'absY']].median()
-        median_positions.reset_index(inplace=True)
-        module = sprawl_results.iloc[module_number]
-        density_module = []
-        density_background = []
-        for uID in module.uIDs.split(","):
-            density_cell_module, density_cell_background = _calculate_density(adata_st.uns['transcripts'][adata_st.uns['transcripts'].uID == uID], module.genes.split(","), module.method, num_sectors=num_sectors, num_ccircles=num_ccircles)
-            density_module.append(density_cell_module)
-            density_background.append(density_cell_background)
-        density_background = np.mean(density_background, axis = 0)
-        density_module = np.mean(density_module, axis = 0)
-        pdiff = None
-        if 'tangram' in module.keys() and 'baseline' in module.keys():
-            pdiff = module['tangram'] - module['baseline']
-        _plot_circular_cell(density_module, density_background, median_positions, module.uIDs.split(","), num_sectors, num_ccircles, module.method, module.genes, pdiff, positions, filename)
-    else:
-        pattern = "clique" if mode == 'instant_fsm' else "bicluster"
-        instant_results = adata_st.uns[mode]
-        median_positions = adata_st.uns['transcripts'].groupby('uID')[['absX', 'absY']].median()
-        df_transcripts = adata_st.uns['transcripts']
-        median_positions.reset_index(inplace=True)
-        all_uids = list(adata_st.obs_names.values)
-        proximity_matrix = []
-        for uID in all_uids:
-            if is_sliced:
-                proximity_matrix.append(_calculate_gene_cell_neighborhood_slice(df_transcripts[df_transcripts.uID == uID], adata_st.uns['geneList'], distance_threshold))
-            else:
-                proximity_matrix.append(_calculate_gene_cell_neighborhood(df_transcripts[df_transcripts.uID == uID], adata_st.uns['geneList'], distance_threshold))
-        proximity_matrix = np.array(proximity_matrix)
-        module = instant_results.iloc[module_number]
-        knn_matrix_module = []
-        knn_matrix_nonmodule = []
-        module_genes = [x.lower() for x in module.genes.split(",")]
-        module_cells = [x for x in module.uIDs.split(",")]
-        geneList = list(adata_st.uns['geneList'])
-        geneList = [x.lower() for x in geneList]
-        module_cells_idx = [all_uids.index(x) for x in module.uIDs.split(",")]
-        non_module_cells = list(set(all_uids).difference(set(module_cells)))
-        non_module_cells_idx = [all_uids.index(x) for x in non_module_cells]
-        knn_matrix_module = proximity_matrix[module_cells_idx]
-        non_module_cells = np.unique(df_transcripts[~df_transcripts.uID.isin(module_cells)].uID)
-        knn_matrix_nonmodule = proximity_matrix[non_module_cells_idx]
-        if positions:
-            fig, ax = plt.subplots(nrows = 1, ncols = 2, figsize=(10,5))
-            _plot_spatial_cells(median_positions, module_cells, ax[1])
-        else:
-            fig, ax = plt.subplots(nrows = 1, ncols = 1, figsize=(6,5))
-        _plot_neighborhood_heatmap(knn_matrix_module, knn_matrix_nonmodule, geneList, module_genes, [x for x in geneList if x not in module_genes], ax[1] if positions else ax)
-        if header:
-            fig.suptitle(f"Genes: {module.genes}, #Cells: {len(module_cells)}, Pattern: {pattern}", wrap = True)
-        plt.tight_layout()
-        if filename != None:
-            plt.savefig(filename, dpi=1000)
-        if show:
-            plt.show()
 
 def visualize_pattern(adata_st, module_number, pattern, mode = "instant_biclustering", filename = None, num_sectors = 10, num_ccircles = 5, distance_threshold = 2, is_sliced = True, positions = False, header = False, show = True):
     '''
@@ -424,7 +346,7 @@ def visualize_pattern(adata_st, module_number, pattern, mode = "instant_bicluste
     module_number: int
         Index of the module to visualize.
     pattern: str
-        Pattern to model. Options are 'Proximal', 'Cluster', 'Concentric'.
+        Pattern to model. Options are 'Proximal', 'Radial', 'Concentric'.
     mode:
         Mode of the selected module. Options are 'instant_fsm', 'instant_biclustering', 'sprawl_biclustering'.
     filename: str
