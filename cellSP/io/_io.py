@@ -69,7 +69,7 @@ def combine_geo(adata_st, file_path = ".", mode=['instant_fsm', 'instant_biclust
             options = {'font': {'color': 'black','size': 14}}
             if setting == "cell":
                 if method == "sprawl_biclustering":
-                    worksheet.insert_textbox('J1', f"#Genes: {len(adata_st.uns[method].iloc[int(i)]['genes'].split(","))} \
+                    worksheet.insert_textbox('J1', f"#Genes: {len(adata_st.uns[method].iloc[int(i)]['genes'].split(','))} \
                                                 \n#P&C Genes: {adata_st.uns[method].iloc[int(i)]['#pc_genes']} \
                                                 \n#Background: {adata_st.n_vars if setting == "cell" else len(adata_st.uns['geneList'])} \
                                                 \nPattern: {adata_st.uns[method].iloc[int(i)].method} \
@@ -78,7 +78,7 @@ def combine_geo(adata_st, file_path = ".", mode=['instant_fsm', 'instant_biclust
                                                 \nTangram Accuracy: {round(adata_st.uns[method].iloc[int(i)]['tangram'], 3)} \
                                                 \nBaseline Accuracy: {round(adata_st.uns[method].iloc[int(i)]['baseline'], 3)}", options)
                 else:
-                    worksheet.insert_textbox('J1', f"#Genes: {len(adata_st.uns[method].iloc[int(i)]['genes'].split(","))} \
+                    worksheet.insert_textbox('J1', f"#Genes: {len(adata_st.uns[method].iloc[int(i)]['genes'].split(','))} \
                                                 \n#P&C Genes: {adata_st.uns[method].iloc[int(i)]['#pc_genes']} \
                                                 \n#Background: {adata_st.n_vars if setting == "cell" else len(adata_st.uns['geneList'])} \
                                                 \nGenes: {adata_st.uns[method].iloc[int(i)]['genes']} \
@@ -87,7 +87,7 @@ def combine_geo(adata_st, file_path = ".", mode=['instant_fsm', 'instant_biclust
                                                 \nBaseline Accuracy: {round(adata_st.uns[method].iloc[int(i)]['baseline'], 3)}", options)
             else:
                 if method == "sprawl_biclustering":
-                    worksheet.insert_textbox('J1', f"#Genes: {len(adata_st.uns[method].iloc[int(i)]['genes'].split(","))} \
+                    worksheet.insert_textbox('J1', f"#Genes: {len(adata_st.uns[method].iloc[int(i)]['genes'].split(','))} \
                                                 \n#Background: {adata_st.n_vars if setting == "cell" else len(adata_st.uns['geneList'])} \
                                                 \nPattern: {adata_st.uns[method].iloc[int(i)].method} \
                                                 \nGenes: {adata_st.uns[method].iloc[int(i)]['genes']} \
@@ -95,7 +95,7 @@ def combine_geo(adata_st, file_path = ".", mode=['instant_fsm', 'instant_biclust
                                                 \nTangram Accuracy: {round(adata_st.uns[method].iloc[int(i)]['tangram'], 3)} \
                                                 \nBaseline Accuracy: {round(adata_st.uns[method].iloc[int(i)]['baseline'], 3)}", options)
                 else:
-                    worksheet.insert_textbox('J1', f"#Genes: {len(adata_st.uns[method].iloc[int(i)]['genes'].split(","))} \
+                    worksheet.insert_textbox('J1', f"#Genes: {len(adata_st.uns[method].iloc[int(i)]['genes'].split(','))} \
                                                 \n#Background: {adata_st.n_vars if setting == "cell" else len(adata_st.uns['geneList'])} \
                                                 \nGenes: {adata_st.uns[method].iloc[int(i)]['genes']} \
                                                 \n#cells: {adata_st.uns[method].iloc[int(i)]['#cells']} \
