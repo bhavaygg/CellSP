@@ -7,7 +7,10 @@ import bottleneck as bn
 import numpy as np
 import math
 import random
-
+from scipy.special import gammaln
+from scipy.stats import norm
+import re
+import ast
 
 class Bicluster:
     """This class models a bicluster. Adapter from https://github.com/padilha/biclustlib/blob/master/biclustlib/algorithms/las.py
@@ -25,7 +28,7 @@ class Bicluster:
         bla
     """
 
-    def __init__(self, rows, cols, score, data=None):
+    def __init__(self, rows, cols, score = 0, avg = 0, data=None):
         if isinstance(rows, np.ndarray) and rows.dtype == bool and cols.dtype == bool:
             self.rows = np.nonzero(rows)[0]
             self.cols = np.nonzero(cols)[0]
@@ -35,6 +38,7 @@ class Bicluster:
         else:
             raise ValueError("rows and cols must be bool or int numpy.arrays")
         self.score = score
+        self.avg = avg
         if data is not None:
             n, m = len(self.rows), len(self.cols)
 
@@ -69,7 +73,7 @@ class Bicluster:
         self.cols.sort()
 
     def __str__(self):
-        return 'Bicluster(rows={0}, cols={1})'.format(self.rows, self.cols)
+        return 'Bicluster(rows={0}, cols={1}, avg={2}, score={3})'.format(self.rows, self.cols, self.avg, self.score)
 
 
 class Biclustering:
@@ -132,7 +136,7 @@ class LargeAverageSubmatrices():
         self.tol = tol
         self.threads = threads
 
-    def run(self, data):
+    def run(self, data, null_score = None):
         """Compute biclustering.
 
         Parameters
@@ -157,18 +161,27 @@ class LargeAverageSubmatrices():
         shared_data_np = np.frombuffer(shared_data).reshape(data_matrix.shape)
         np.copyto(shared_data_np, data_matrix)
         del data
-        for i in range(self.num_biclusters):
+        count = 0
+        while True:
+            if null_score == None:
+                if count >= self.num_biclusters:
+                    break
             with mp.Pool(processes=self.threads, initializer=self._initializer_func, initargs=(data_matrix, data_matrix.shape)) as pool:
                 best, avg, score = max((pool.starmap(self._find_bicluster, [() for _ in range(self.randomized_searches)])), key=itemgetter(-1))
             if score < self.score_threshold:
                 break
+            if null_score != None:
+                if score < null_score:
+                    break
             shared_data_np[np.ix_(best.rows, best.cols)] -= avg
             best.score = score
+            best.avg = avg
             biclusters.append(best)
             data_matrix = shared_data_np.copy(order='C')
             shared_data = mp.RawArray('d', data_matrix.shape[0] * data_matrix.shape[1])
             shared_data_np = np.frombuffer(shared_data).reshape(data_matrix.shape)
             np.copyto(shared_data_np, data_matrix)
+            count += 1
         return Biclustering(biclusters)
 
     def _initializer_func(self, X, X_shape):
@@ -204,7 +217,7 @@ class LargeAverageSubmatrices():
             cols = bn.argpartition(col_sums, num_cols - l)[-l:] # this is usually faster than cols = np.argsort(col_sums)[-l:]
 
             avg = np.mean(data[np.ix_(rows, cols)])
-        return Bicluster(rows, cols, avg)
+        return Bicluster(rows, cols, avg, 0)
 
     def _improve_bicluster(self, b):
         """Relaxes the k x l bicluster constraint in order to maximize the score function locally."""
@@ -258,8 +271,8 @@ class LargeAverageSubmatrices():
         return np.append(0, log_cumsum) # 0 because log 0! = log 1 = 0, so this array will have size n + 1
 
     def _validate_parameters(self):
-        if self.num_biclusters <= 0:
-            raise ValueError("num_biclusters must be > 0, got {}".format(num_biclusters))
+        # if self.num_biclusters <= 0:
+        #     raise ValueError("num_biclusters must be > 0, got {}".format(num_biclusters))
 
         if self.randomized_searches <= 0:
             raise ValueError("randomized_searches must be > 0, got {}".format(self.randomized_searches))
@@ -270,6 +283,23 @@ class LargeAverageSubmatrices():
         if self.tol <= 0.0:
             raise ValueError("tol must be a small double > 0.0, got {}".format(self.tol))
 
+
+def _get_null_score(matrix, n_permutations = 5, threads = 1):
+    scores = []
+    for i in range(n_permutations):
+        shuffled = matrix.copy().flatten()
+        np.random.shuffle(shuffled)
+        shuffled = shuffled.reshape(matrix.shape)
+        model = LargeAverageSubmatrices(num_biclusters = 1, randomized_searches = 10000, scale_data = True, threads = threads)
+        biclustering = model.run(shuffled)
+        scores.append(biclustering.biclusters[0].score)
+    return np.mean(scores)
+
+def _submatrix_score(n1,n2,k1,k2,k):
+    log_comb_1 = (gammaln(n1 + 1) - gammaln(k1 + 1) - gammaln(n1 - k1 + 1))
+    log_comb_2 = (gammaln(n2 + 1) - gammaln(k2 + 1) - gammaln(n2 - k2 + 1))
+    c = norm.logcdf(-k * np.sqrt(k1 * k2))
+    return -(log_comb_1 + log_comb_2 + c)
 
 def _modified_jaccard_similarity(list1, list2):
     #overlap coefficient
@@ -316,8 +346,10 @@ def _get_sprawl_score(p1, scores, col_range, col_log_combs, row_log_combs):
     return score
 
 def _string_to_tuples(tuple_string):
-    values = tuple_string.split(', ')
-    return [f"({pair.split(',')[0].strip('()')},{pair.split(',')[1].strip('()')})" for pair in values]
+    s_quoted = re.sub(r'(\w+)', r'"\1"', tuple_string)
+    s_list = f"{s_quoted}"
+    values = ast.literal_eval(f"[{s_list}]")
+    return [f"({pair[0]},{pair[1]})" for pair in values]
 
 def pair_to_geneset(gene_pairs):
     genepairs = set(_string_to_tuples(gene_pairs))
@@ -328,7 +360,7 @@ def pair_to_geneset(gene_pairs):
     genes = set(genes)
     return genepairs, genes
 
-def _expand_bicluster(df, scores, scores_scaled, uids, score_issues, col_range, col_log_combs, row_log_combs, mode = "sprawl", gene_pairs = None, df_sprawl = None):
+def _expand_bicluster(df, scores, scores_scaled, uids, score_issues, mode = "sprawl", gene_pairs = None, df_sprawl = None, genes = None, oc = 0.667):
     '''
         Expands bicluster by combining two biclusters if their gene set have a jaccard similarity of 2/3 or more.
     '''
@@ -338,11 +370,15 @@ def _expand_bicluster(df, scores, scores_scaled, uids, score_issues, col_range, 
             if mode == "sprawl":
                 genes1 = set(df.at[i, 'genes'].split(','))
                 genes2 = set(df.at[j, 'genes'].split(','))
+                gene2_index = [genes.index(x) for x in genes2]
+                gene1_index = [genes.index(x) for x in genes1]
+                combined_idx = [genes.index(x) for x in list(set(genes1).union(set(genes2)))]
             else:
                 genepairs1, genes1 = pair_to_geneset(df.at[i, 'gene-pairs'])
                 genepairs2, genes2 = pair_to_geneset(df.at[j, 'gene-pairs'])
                 genepair2_index = [gene_pairs.index(x) for x in genepairs2]
                 genepair1_index = [gene_pairs.index(x) for x in genepairs1]
+                combined_idx = [gene_pairs.index(x) for x in list(genepairs1.union(genepairs2))]
             jaccard = _modified_jaccard_similarity(genes1, genes2)
             confirm_method = True
             if mode == "sprawl":
@@ -351,17 +387,21 @@ def _expand_bicluster(df, scores, scores_scaled, uids, score_issues, col_range, 
                 df_sp_scaled = df_scores.copy()
                 df_sp_scaled[:] = scale(df_sp_scaled)
                 scores_scaled = df_sp_scaled.values
-            if jaccard >= 2/3 and confirm_method and (i,j) not in score_issues and (j,i) not in score_issues:
+            if jaccard >= oc and confirm_method and (i,j) not in score_issues and (j,i) not in score_issues:
                 positions1 = [uids.index(x) for x in df.at[i, 'uIDs'].split(',')]
                 positions2 = [uids.index(x) for x in df.at[j, 'uIDs'].split(',')]
                 cells1 = set(df.at[i, 'uIDs'].split(','))
                 cells2 = set(df.at[j, 'uIDs'].split(','))
                 positions_union = [uids.index(x) for x in list(cells1.union(cells2))]
-                if df.at[j, 'combined'] > 0:
-                    pre_score = _get_sprawl_score(positions2, scores_scaled, col_range, col_log_combs, row_log_combs)
+                # if df.at[j, 'combined'] > 0:
+                #     pre_score = _submatrix_score(positions2, scores_scaled, col_range, col_log_combs, row_log_combs)
+                # pre_score =_submatrix_score(scores_scaled.shape[0], scores_scaled.shape[1], len(positions_union), len(bicluster.cols), np.mean(scores_scaled[positions_union][:, combined_idx]))
+                # else:
+                if mode == "instant":
+                    pre_score = _submatrix_score(scores_scaled.shape[0], scores_scaled.shape[1], len(positions2), len(genepair2_index), np.mean(scores_scaled[positions2][:, genepair2_index]))
                 else:
-                    pre_score = _get_sprawl_score(positions1, scores_scaled, col_range, col_log_combs, row_log_combs)
-                post_score = _get_sprawl_score(positions_union, scores_scaled, col_range, col_log_combs, row_log_combs)
+                    pre_score = _submatrix_score(scores_scaled.shape[0], scores_scaled.shape[1], len(positions2), len(genes2), np.mean(scores_scaled[positions2][:, gene2_index]))
+                post_score = _submatrix_score(scores_scaled.shape[0], scores_scaled.shape[1], len(positions_union), len(combined_idx), np.mean(scores_scaled[positions_union][:, combined_idx]))
                 if post_score < 1:
                     score_issues.append((i,j))
                     score_issues.append((j,i))
@@ -373,11 +413,11 @@ def _expand_bicluster(df, scores, scores_scaled, uids, score_issues, col_range, 
                 df.at[i, '#cells'] = len(list(cells1.union(cells2)))
                 df.at[i, 'combined'] = 1 + df.at[i, 'combined'] + df.at[j, 'combined']
                 combined = True
-                if mode == "sprawl":
-                    df.at[i, f'{mode} average'] = f"{df.at[i, f'{mode} average'].split(':')[0]},{np.mean(df_scores.iloc[[int(x) for x in list(positions2)]][list(genes2)])}:{np.mean(df_scores.iloc[positions_union][list(genes1.union(genes2))])}"
-                else:
-                    df.at[i, f'{mode} average'] = f"{df.at[i, f'{mode} average'].split(':')[0]},{np.mean(scores[positions2][:, genepair2_index])}:{np.mean(scores[positions_union][:, list(set(genepair1_index).union(set(genepair2_index)))])}"
-                df.at[i, f'{mode} score'] = f"{df.at[i, f'{mode} score'].split(':')[0]},{pre_score}:{post_score}"
+                # if mode == "sprawl":
+                #     df.at[i, f'{mode} average'] = f"{df.at[i, f'{mode} average'].split(':')[0]},{np.mean(df_scores.iloc[[int(x) for x in list(positions2)]][list(genes2)])}:{np.mean(df_scores.iloc[positions_union][list(genes1.union(genes2))])}"
+                # else:
+                #     df.at[i, f'{mode} average'] = f"{df.at[i, f'{mode} average'].split(':')[0]},{np.mean(scores[positions2][:, genepair2_index])}:{np.mean(scores[positions_union][:, list(set(genepair1_index).union(set(genepair2_index)))])}"
+                df.at[i, f'LAS score'] = f"{df.at[i, f'LAS score'].split(':')[0]},{pre_score}:{post_score}"
                 df = df.drop(j).reset_index(drop=True)
                 break
         if combined:

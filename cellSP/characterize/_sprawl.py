@@ -4,7 +4,7 @@ from scipy.spatial import ConvexHull
 import seaborn as sns
 from collections import Counter
 from sklearn.preprocessing import scale
-from ._bicluster import LargeAverageSubmatrices, _log_combs, _expand_bicluster_rows, _expand_bicluster, _get_sprawl_score
+from ._bicluster import LargeAverageSubmatrices, _log_combs, _expand_bicluster_rows, _expand_bicluster, _get_sprawl_score, _submatrix_score, _get_null_score
 from ._utils import random_mean_pairs_angle, random_mean_pairs_dist
 import timeit
 from datetime import timedelta
@@ -144,59 +144,68 @@ def run_sprawl(adata_st, methods = ['Peripheral', 'Radial', 'Punctate', 'Central
 
 
 
-def bicluster_sprawl(adata_st, methods = ['Peripheral', 'Radial', 'Punctate', 'Central'], num_biclusters = 10, randomized_searches = 50000, scale_data = True, cell_threshold = 5, threads = 1, expand = True):# 'Punctate', 'Central', 50000
+def bicluster_sprawl(adata_st, methods = ['Peripheral', 'Radial', 'Punctate', 'Central'], num_biclusters = 'auto', randomized_searches = 50000, scale_data = True, cell_threshold = 5, gene_threshold = 3, threads = 1, expand = True, oc = 0.667):# 'Punctate', 'Central', 50000
     '''
     Perform LAS biclustering on SPRAWL spatial pattern scores to find spatial gene expression patterns.
     Arguments
     ----------
     adata_st : AnnData
-        Anndata object containing spatial transcriptomics data.
-    methods : list
-        List of methods to run sprawl on. Options are 'Peripheral', 'Radial', 'Punctate', 'Central'.
-    num_biclusters : int
-        Number of biclusters to find.
-    randomized_searches : int
-        Number of randomized searches to perform in LAS.
-    scale_data : bool
-        If True, scale the data before biclustering.
-    cell_threshold : int
-        Minimum number of cells in a bicluster.
-    threads : int
-        Number of threads to use.
+        AnnData object containing spatial transcriptomics data with SPRAWL pattern scores.
+    methods : list of str, default=['Peripheral', 'Radial', 'Punctate', 'Central']
+        Spatial patterns to analyze using SPRAWL. Valid options are 'Peripheral', 'Radial', 
+        'Punctate', and 'Central'.
+    num_biclusters : int or str, default='auto'
+        Number of biclusters to detect. If 'auto', the algorithm determines an optimal number.
+    randomized_searches : int, default=50000
+        Number of randomized searches to perform in the LAS biclustering algorithm.
+    scale_data : bool, default=True
+        Whether to z-score the input data before biclustering.
+    cell_threshold : int, default=5
+        Minimum number of cells required for a valid bicluster.
+    gene_threshold : int, default=3
+        Minimum number of genes required for a valid bicluster.
+    threads : int, default=1
+        Number of threads to use for parallel computation.
+    expand : bool, default=True
+        Whether to expand biclusters by including additional nearby or correlated entries.
+    oc : float, default=0.667
+        Overlap coefficient threshold for merging overlapping biclusters.
     '''
     print("Bi-clustering SPRAWL results...")
     start = timeit.default_timer()
     df_sprawl = adata_st.uns['sprawl_scores'][methods[0]].copy()
-    row_log_combs = _log_combs(df_sprawl.shape[0])[1:] # self._log_combs(num_rows)[1:] discards the case where the bicluster has 0 rows
-    col_log_combs = _log_combs(df_sprawl.shape[1])[1:] # self._log_combs(num_cols)[1:] discards the case where the bicluster has 0 columns
-    col_range = np.arange(1, df_sprawl.shape[1] + 1)
     rows = []
     for method in methods:
         df_sp = adata_st.uns['sprawl_scores'][method].copy()
         df_sp_scaled = df_sp.copy()
         df_sp_scaled[:] = scale(df_sp)
+        df_sp_scaled = df_sp_scaled.values
         genes = df_sp.columns.values
         uids = adata_st.obs_names.values
         model = LargeAverageSubmatrices(num_biclusters = num_biclusters, randomized_searches = randomized_searches, scale_data = scale_data, threads = threads)
-        biclustering = model.run(df_sp.values)
+        if num_biclusters == 'auto':
+            null_score = _get_null_score(df_sp.values, threads = threads)
+            biclustering = model.run(df_sp.values, null_score)
+        else:
+            biclustering = model.run(df_sp.values)
         for bicluster in biclustering.biclusters:
-            if len(bicluster.cols) > 2:
-                bicluster.rows = _expand_bicluster_rows(df_sp.values, bicluster.rows, bicluster.cols)
+            if len(bicluster.cols) >= 2:
+                bicluster.rows = _expand_bicluster_rows(df_sp_scaled, bicluster.rows, bicluster.cols)
                 bicluster_genes = genes[bicluster.cols]
                 bicluster_cells = uids[bicluster.rows]
-                calculated_score = _get_sprawl_score(bicluster.rows, df_sp_scaled.values, col_range, col_log_combs, row_log_combs)
+                calculated_score = _submatrix_score(df_sp_scaled.shape[0], df_sp_scaled.shape[1], len(bicluster.rows), len(bicluster.cols), np.mean(df_sp_scaled[bicluster.rows][:, bicluster.cols]))
                 rows.append([method, ','.join(map(str, bicluster_genes)), ','.join(map(str, bicluster_cells)), len(bicluster_cells), 0, calculated_score])
     df_results = pd.DataFrame(rows, columns=['method', 'genes', 'uIDs', '#cells', 'combined', "LAS score"])
-    df_results['sprawl average'] = df_results['sprawl average'].astype('str')
-    df_results['sprawl score'] = df_results['sprawl score'].astype('str')
+    df_results['LAS score'] = df_results['LAS score'].astype('str')
     score_issues = []
     if expand:
         while True:
             original_length = len(df_results)
-            df_results, score_issues = _expand_bicluster(df_results, df_sp.values, df_sp_scaled.values, list(uids), score_issues, col_range, col_log_combs, row_log_combs, df_sprawl = adata_st.uns['sprawl_scores'])
+            df_results, score_issues = _expand_bicluster(df_results, df_sp.values, df_sp_scaled, list(uids), score_issues, df_sprawl = adata_st.uns['sprawl_scores'], genes = list(genes), oc = oc)
             if len(df_results) == original_length:
                 break
     df_results = df_results[df_results.uIDs.apply(lambda x: len(x.split(',')) > cell_threshold)]
+    df_results = df_results[df_results['genes'].apply(lambda x: len(x.split(',')) >= gene_threshold)]
     adata_st.uns[f'sprawl_biclustering'] = df_results.reset_index(drop=True)
     print("SPRAWL bi-clustering completed time:", timedelta(seconds=timeit.default_timer() - start))
     return adata_st
