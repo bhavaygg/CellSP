@@ -55,8 +55,8 @@ There are three main steps involved in running CellSP -
 CellSP uses InSTAnT and SPRAWL for identifying statistically significant subcellular patterns. InSTAnT tests if transcripts of a gene pair tend to be proximal to each other more often than expected by chance, while SPRAWL identifies four types of subcellular patterns – peripheral, radial, punctate and central – describing the distribution of a gene’s transcripts within the cell. 
 
 To run InSTAnT, CellSP has two primary parameters - 
-    - `distance_threshold`: The distance (in microns) at which to consider 2 genes proximal.
-    - `alpha_cpb`: p-value signifiance threshold below which a gene-pair is considered colocalized for the CPB test. Default = 1e-3
+- `distance_threshold`: The distance (in microns) at which to consider 2 genes proximal.
+- `alpha_cpb`: p-value signifiance threshold below which a gene-pair is considered colocalized for the CPB test. Default = `1e-3`
 
 ```
 adata_st = cellSP.ch.run_instant(adata_st = adata_st, distance_threshold=2, alpha_cpb=1e-5)
@@ -73,14 +73,16 @@ adata_st = cellSP.ch.run_sprawl(adata_st)
 CellSP use a biclustering tool, LAS, to analyze each of the patterns and identiy "gene-cell modules". Each module represents a set of genes or gene pairs that exhibit the same type of sub-cellular pattern in the same set of cells, with statistical significance estimated by a Bonferroni-based score.
 
 CellSP has 2 functions for module discovery, one for SPRAWL and one for InSTAnT. Both the functions share the same parameters but the InSTAnt function has two additional parameter 
-    - `alpha`: p-value signifiance threshold below which a gene-pair is considered for biclustering. Default = 1e-3
-    - `topk`: Select only the K most significant gene pairs that have p-value < `alpha`. Default = None
+    - `alpha`: p-value signifiance threshold below which a gene-pair is considered for biclustering. Default = `1e-3`
+    - `topk`: Select only the K most significant gene pairs that have p-value < `alpha`. Default = `None`
 
 These parameters is used the restrict the number of gene-pairs over which biclustering is performed in order to reduce the computational complexity. 
 
 The other parameters used are - 
-    - `num_biclusters`: Number of modules to find. Default = 10.
-    - `randomized_searches`: Number of randomized searches to perform in LAS. Default = 50000.
+    - `num_biclusters`: Number of modules to find. Default = `'auto'`.
+    - `randomized_searches`: Number of randomized searches to perform in LAS. Default = `50000`.
+
+The `num_biclusters` parameter can be set to any integer of choice. The `auto` option generates a null distribution for each pattern and finds suitable LAS score threshold based on the data. 
 
 ```
 adata_st = cellSP.ch.bicluster_instant(adata_st, distance_threshold=2, threads=128, alpha=1e-5, num_biclusters = 50, randomized_searches = 50000)
@@ -108,7 +110,7 @@ adata_st = cellSP.geo.geo_analysis(adata_st, setting="cell")
 
 To help visualize modules defined by the five types of subcellular spatial patterns (four types identified by SPRAWL and colocalization patterns identified by InSTAnT), we developed three complementary plotting techniques.
 
-![CellSP_visualizations](https://github.com/bhavaygg/CellSP/blob/main/figures/CellSP_visualizations.png)
+![CellSP_visualizations](https://github.com/bhavaygg/CellSP/blob/main/docs/CellSP_visualizations.png)
 
 
 SPRAWL identifies spatial localization patterns (peripheral, central, radial, or punctate) for each gene in individual cells. CellSP aggregates these patterns across cells by representing each cell within a standardized unit circle, enabling comparative analyses.
