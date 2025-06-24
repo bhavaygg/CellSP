@@ -66,7 +66,7 @@ def _get_panther(geneset, background, organism, setting = None):
     return df
 
 
-def geo_analysis(adata_st, mode=['instant_fsm', 'instant_biclustering', 'sprawl_biclustering'], organism = 10090, do_revigo = True, setting = "module", corr_threshold = 0.98):
+def geo_analysis(adata_st, mode=['instant_biclustering', 'sprawl_biclustering'], organism = 10090, do_revigo = True, setting = "module", corr_threshold = 0.98):
     '''
     Perform the geo analysis.
     Arguments
@@ -74,7 +74,7 @@ def geo_analysis(adata_st, mode=['instant_fsm', 'instant_biclustering', 'sprawl_
     adata_st : AnnData
         Spatial transcriptomic data.
     mode : list
-        List of analysis to perform. Values must be in ['instant_fsm', 'instant_biclustering', 'sprawl_biclustering'].
+        List of analysis to perform. Values must be in ['instant_biclustering', 'sprawl_biclustering'].
     organism : int
         Taxon ID of the organism.
     do_revigo : bool

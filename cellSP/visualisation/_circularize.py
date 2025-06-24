@@ -7,6 +7,7 @@ import pandas as pd
 import seaborn as sns
 from scipy.spatial import ConvexHull
 from scipy.spatial import cKDTree
+import umap
 
 def _calculate_density_sector(points, num_sectors=20):
     densities = np.zeros(num_sectors)
@@ -126,7 +127,7 @@ def plot_module_tissue(adata_st, module_number, pattern, mode, show = True, file
     if show:
         plt.show()
 
-def _run_umap(gene_ex):
+def run_umap(gene_ex):
     reducer = umap.UMAP()
     X_umap = reducer.fit_transform(gene_ex)
     df_umap = pd.DataFrame(X_umap, columns=["UMAP-1", "UMAP-2"], index = gene_ex.index)
@@ -186,7 +187,7 @@ def _plot_circular_cell(density_module, density_background, median_positions, mo
         if len(genes.split(",")) <= 10:
             fig.suptitle(f"Genes: {genes}, #Cells: {len(module_cells)}, Pattern: {pattern}", wrap = True)
         else:
-            fig.suptitle(f"#Genes: {len(genes.split(","))}, #Cells: {len(module_cells)}, Pattern: {pattern}", wrap = True)
+            fig.suptitle(f"#Genes: {len(genes.split(','))}, #Cells: {len(module_cells)}, Pattern: {pattern}", wrap = True)
     plt.tight_layout()
     if filename != None:
         plt.savefig(filename, dpi=300)

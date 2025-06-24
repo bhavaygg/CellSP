@@ -237,7 +237,7 @@ def create_report(adata_st):
         geo_module['pValue'] = geo_module['pValue'].apply(lambda x: f'{x:.2e}' if isinstance(x, float) else x)
         geo_cell = adata_st.uns['instant_biclustering_geo_cell'][str(n)].iloc[:5][['term', 'pValue']]
         geo_cell['pValue'] = geo_cell['pValue'].apply(lambda x: f'{x:.2e}' if isinstance(x, float) else x)
-        data.append([f"plots/{n}_{mode}_{pattern}.png", f"plots/{n}_{mode}_spatial.png", f"plots/{n}_{mode}_umap.png", geo_module, geo_cell, [f"Module {n}", f"#Cells: {row['#cells']}", f"#Genes: {len(row.genes.split(","))}", f"Genes: {row.genes}"]])
+        data.append([f"plots/{n}_{mode}_{pattern}.png", f"plots/{n}_{mode}_spatial.png", f"plots/{n}_{mode}_umap.png", geo_module, geo_cell, [f"Module {n}", f"#Cells: {row['#cells']}", f"#Genes: {len(row.genes.split(','))}", f"Genes: {row.genes}"]])
     for n, row in adata_st.uns['sprawl_biclustering'].iterrows():
         mode = "sprawl_biclustering"
         pattern = row.method
@@ -247,7 +247,7 @@ def create_report(adata_st):
         geo_module['pValue'] = geo_module['pValue'].apply(lambda x: f'{x:.2e}' if isinstance(x, float) else x)
         geo_cell = adata_st.uns['sprawl_biclustering_geo_cell'][str(n)].iloc[:5][['term', 'pValue']]
         geo_cell['pValue'] = geo_cell['pValue'].apply(lambda x: f'{x:.2e}' if isinstance(x, float) else x)
-        data.append([f"plots/{n}_{mode}_{pattern}.png", f"plots/{n}_{mode}_spatial.png", f"plots/{n}_{mode}_umap.png", geo_module, geo_cell, [f"Module {n}", f"Pattern: {pattern}", f"#Cells: {row['#cells']}", f"#Genes: {len(row.genes.split(","))}", f"Genes: {row.genes}"]])
+        data.append([f"plots/{n}_{mode}_{pattern}.png", f"plots/{n}_{mode}_spatial.png", f"plots/{n}_{mode}_umap.png", geo_module, geo_cell, [f"Module {n}", f"Pattern: {pattern}", f"#Cells: {row['#cells']}", f"#Genes: {len(row.genes.split(','))}", f"Genes: {row.genes}"]])
     df = pd.DataFrame(rows, columns=["Mode", "Pattern", "#cells", "#genes"])
     df_html = df.to_html(classes='table table-striped', escape=False, index=False)
     template = Template(template_str)
