@@ -41,7 +41,7 @@ def do_proportion_test(adata_st_control, adata_st_condition, file_path = None, s
     '''
     genes_control = adata_st_control.var_names.tolist()
     genes_condition = adata_st_condition.var_names.tolist()
-    assert genes_control == genes_condition, "Gene listsare not the same"
+    assert genes_control == genes_condition, "Gene lists are not the same"
     gene_pair_dict = {}
     gene_dict = {}
     for n, i in adata_st_control.uns['instant_biclustering'].iterrows():
@@ -114,3 +114,4 @@ def do_proportion_test(adata_st_control, adata_st_condition, file_path = None, s
             rows.append([i[0], i[1], c1, c2, n1, n2, apply_ztest_pos(c1,c2,n1,n2), apply_ztest_pos_score(c1,c2,n1,n2), apply_ztest_neg(c1,c2,n1,n2), apply_ztest_neg_score(c1,c2,n1,n2)])
 
     df_compare = pd.DataFrame(rows, columns=["G1", "G2", "x_ctrl", "x_condition", "n_ctrl", "n_condition", "pval_ctrl", "zscore_ctrl", "pval_condition", "zscore_condition"])
+    return df_compare
