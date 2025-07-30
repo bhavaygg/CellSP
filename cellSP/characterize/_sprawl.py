@@ -122,7 +122,7 @@ def run_sprawl(adata_st, methods = ['Peripheral', 'Radial', 'Punctate', 'Central
                 cell_dict['boundaries'][0], cell_dict['spot_coords'][0], cell_dict['spot_genes'][0] = vertices, spot_coords, spot_genes
                 cell_dict['zslices'].append(0)
                 cell_dict['gene_counts'] = cell.gene.value_counts().to_dict()
-                cell_dict['n'] += Z[['absX', 'absY']].values.shape[0]
+                cell_dict['n'] += cell[['absX', 'absY']].values.shape[0]
         if "gene_counts" in cell_dict:
             cell_dict['genes'] = np.unique(list(cell_dict['gene_counts'].keys()))
             if len(cell_dict["zslices"]) > 0 and min(cell_dict['gene_counts'].values()) >= 2:
