@@ -1,8 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from itertools 
-import combinations
+from itertools import combinations
 from statsmodels.stats.proportion import proportions_ztest
 
 def apply_ztest_pos(c1, c2, n1, n2):
