@@ -30,7 +30,7 @@ def apply_ztest_neg_score(c1, c2, n1, n2):
         alternative='smaller'
       )[0]
 
-def do_proportion_test(adata_st_control, adata_st_condition, file_path = None, show = True):
+def do_proportion_test(adata_st_control, adata_st_condition):
     '''
     Plot the cells in the spatial transcriptomic data.
     Arguments
