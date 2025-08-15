@@ -1,4 +1,8 @@
 # CellSP
+[![PyPI version](https://img.shields.io/pypi/v/cellSP.svg)](https://pypi.org/project/cellSP/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Docs](https://img.shields.io/badge/docs-available-brightgreen)](https://github.com/bhavaygg/cellSP#readme)
+[![Downloads](https://static.pepy.tech/badge/cellSP)](https://pepy.tech/project/cellSP)
 
 CellSP is a python package for the analysis of subcellular spatial transcriptomic data. CellSP works with datasets generated at single-modulecule resolution from technologies like Xenium, CosMx, MERSCOPE or other ISH-like data. Using existing tools [InSTAnT](https://github.com/bhavaygg/InSTAnT) and [SPRAWL](https://github.com/salzman-lab/SPRAWL/), CellSP identifies statistically signficant subcellular patterns of gene transcripts and uses a biclustering algorithm to aggregate these patterns over hundereds of cells to produce "gene-cell modules". These modules represent the consistent detection of the same subcellular pattern by a set of genes in the same cells and offer a summarized and biologically interpretable desciption of subcellular patterns. CellSP provides specialized techniques for visualizing such modules and their defining spatial patterns. Additionally, CellSP utilize Gene Ontology (GO) enrichments tests to offer functionsal insights into the genes comprising the module as CellSPll as the cells comprising the module.
 
