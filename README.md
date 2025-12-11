@@ -130,11 +130,13 @@ InSTAnT identifies colocalized gene pairs based on their spatial proximity. A pr
 
 ```
 @article{aggarwal2025cellsp,
-  title={CellSP: Module discovery and visualization for subcellular spatial transcriptomics data},
+  title={CellSP enables module discovery and visualization for subcellular spatial transcriptomics data},
   author={Aggarwal, Bhavay and Sinha, Saurabh},
-  journal={bioRxiv},
-  pages={2025--01},
+  journal={Communications Biology},
+  volume={8},
+  number={1},
+  pages={1528},
   year={2025},
-  publisher={Cold Spring Harbor Laboratory}
+  publisher={Nature Publishing Group UK London}
 }
 ```
