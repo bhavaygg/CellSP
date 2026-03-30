@@ -49,6 +49,8 @@ def run_instant(adata_st, distance_threshold, threads, n_vertices = None, alpha_
             obj.run_ProximalPairs3D_slice(distance_threshold = distance_threshold, min_genecount = 20)
         else:
             df_temp = adata_st.uns["transcripts"].copy()
+            if 'absZ_raw' not in adata_st.uns["transcripts"].columns:
+                adata_st.uns["transcripts"]['absZ_raw'] = adata_st.uns["transcripts"]['absZ'].copy()
             adata_st.uns["transcripts"]['absZ'] = adata_st.uns["transcripts"]['absZ_raw']
             obj.run_ProximalPairs3D(distance_threshold = distance_threshold, min_genecount = 20)
             adata_st.uns['transcripts'] = df_temp
